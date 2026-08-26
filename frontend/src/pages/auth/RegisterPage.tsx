@@ -17,7 +17,7 @@ const FACEBOOK_APP_ID = import.meta.env.VITE_FACEBOOK_APP_ID || '';
 
 function loadGoogleScript(): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (window.google?.accounts?.id) { resolve(); return; }
+    if (window.google?.accounts?.id) { resolve(); return; } 
     const script = document.createElement('script');
     script.src = 'https://accounts.google.com/gsi/client';
     script.async = true;
@@ -241,7 +241,9 @@ export default function RegisterPage() {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  autoComplete="tel-national"
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-transparent focus:bg-white transition-all"
                   placeholder="+91 98765 43210"
                 />
