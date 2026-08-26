@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Booking Confirmed</title>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+    .header { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); padding: 40px 30px; text-align: center; }
+    .logo { color: #ffffff; font-size: 28px; font-weight: bold; margin: 0; }
+    .subtitle { color: rgba(255,255,255,0.8); font-size: 14px; margin-top: 8px; }
+    .content { padding: 40px 30px; }
+    .success-icon { width: 60px; height: 60px; background-color: #dcfce7; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
+    .success-icon span { font-size: 30px; }
+    h1 { color: #1e1b4b; font-size: 24px; text-align: center; margin-bottom: 10px; }
+    .subtitle-text { color: #6b7280; text-align: center; margin-bottom: 30px; }
+    .booking-card { background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+    .booking-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
+    .booking-row:last-child { border-bottom: none; }
+    .booking-label { color: #6b7280; font-size: 14px; }
+    .booking-value { color: #1f2937; font-weight: 500; font-size: 14px; }
+    .total-row { background-color: #1e1b4b; color: white; margin: 0 -20px; padding: 15px 20px; border-radius: 0 0 12px 12px; }
+    .cta-button { display: block; width: 100%; padding: 16px; background-color: #1e1b4b; color: white; text-align: center; text-decoration: none; border-radius: 10px; font-weight: 600; margin: 30px 0; }
+    .help-text { color: #9ca3af; font-size: 13px; text-align: center; line-height: 1.6; }
+    .footer { background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb; }
+    .footer-links { margin-bottom: 15px; }
+    .footer-links a { color: #6b7280; text-decoration: none; margin: 0 10px; font-size: 13px; }
+    .footer-text { color: #9ca3af; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1 class="logo">33v</h1>
+      <p class="subtitle">33veyora</p>
+    </div>
+    
+    <div class="content">
+      <div class="success-icon">
+        <span>✓</span>
+      </div>
+      
+      <h1>Booking Confirmed!</h1>
+      <p class="subtitle-text">Your reservation has been confirmed. Here are your booking details.</p>
+      
+      <div class="booking-card">
+        <div class="booking-row">
+          <span class="booking-label">Property</span>
+          <span class="booking-value">{{property_name}}</span>
+        </div>
+        <div class="booking-row">
+          <span class="booking-label">Location</span>
+          <span class="booking-value">{{location}}</span>
+        </div>
+        <div class="booking-row">
+          <span class="booking-label">Check-in</span>
+          <span class="booking-value">{{check_in_date}}</span>
+        </div>
+        <div class="booking-row">
+          <span class="booking-label">Check-out</span>
+          <span class="booking-value">{{check_out_date}}</span>
+        </div>
+        <div class="booking-row">
+          <span class="booking-label">Guests</span>
+          <span class="booking-value">{{guest_count}} guests</span>
+        </div>
+        <div class="booking-row">
+          <span class="booking-label">Booking ID</span>
+          <span class="booking-value">{{booking_id}}</span>
+        </div>
+        <div class="booking-row total-row">
+          <span class="booking-label" style="color: rgba(255,255,255,0.8);">Total Paid</span>
+          <span class="booking-value" style="color: white; font-size: 18px;">₹{{total_amount}}</span>
+        </div>
+      </div>
+      
+      <a href="{{view_booking_url}}" class="cta-button">View Booking Details</a>
+      
+      <p class="help-text">
+        If you have any questions about your booking, please contact the host directly through the app or reach out to our support team.
+      </p>
+    </div>
+    
+    <div class="footer">
+      <div class="footer-links">
+        <a href="{{help_url}}">Help Centre</a>
+        <a href="{{safety_url}}">Safety</a>
+        <a href="{{terms_url}}">Terms</a>
+      </div>
+      <p class="footer-text">
+        © 2024 33veyora. All rights reserved.<br>
+        This email was sent to {{user_email}}
+      </p>
+    </div>
+  </div>
+</body>
+</html>

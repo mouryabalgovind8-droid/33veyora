@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Database
+database/database.db
+database/*.db-journal
+
+# Uploads (keep directory structure, ignore files)
+uploads/user/*
+uploads/vendor/*
+uploads/documents/*
+!uploads/user/.gitkeep
+!uploads/vendor/.gitkeep
+!uploads/documents/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Bun
+bun.lock
+bun.lockb
+
+# Freebuff
+.freebuff/

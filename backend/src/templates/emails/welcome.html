@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to 33veyora</title>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+    .header { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); padding: 40px 30px; text-align: center; }
+    .logo { color: #ffffff; font-size: 28px; font-weight: bold; margin: 0; }
+    .subtitle { color: rgba(255,255,255,0.8); font-size: 14px; margin-top: 8px; }
+    .hero-image { width: 100%; height: 200px; background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); display: flex; align-items: center; justify-content: center; }
+    .hero-image span { font-size: 60px; }
+    .content { padding: 40px 30px; }
+    h1 { color: #1e1b4b; font-size: 24px; text-align: center; margin-bottom: 10px; }
+    .subtitle-text { color: #6b7280; text-align: center; margin-bottom: 30px; line-height: 1.6; }
+    .cta-button { display: block; width: 100%; padding: 16px; background-color: #1e1b4b; color: white; text-align: center; text-decoration: none; border-radius: 10px; font-weight: 600; margin: 30px 0; }
+    .features { margin: 30px 0; }
+    .feature-item { display: flex; align-items: flex-start; gap: 15px; padding: 15px 0; border-bottom: 1px solid #f3f4f6; }
+    .feature-item:last-child { border-bottom: none; }
+    .feature-icon { width: 40px; height: 40px; background-color: #f3f4f6; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .feature-icon span { font-size: 20px; }
+    .feature-content h3 { color: #1f2937; font-size: 15px; margin: 0 0 5px 0; }
+    .feature-content p { color: #6b7280; font-size: 13px; margin: 0; line-height: 1.5; }
+    .help-text { color: #9ca3af; font-size: 13px; text-align: center; line-height: 1.6; margin-top: 30px; }
+    .footer { background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb; }
+    .footer-links { margin-bottom: 15px; }
+    .footer-links a { color: #6b7280; text-decoration: none; margin: 0 10px; font-size: 13px; }
+    .footer-text { color: #9ca3af; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1 class="logo">33v</h1>
+      <p class="subtitle">33veyora</p>
+    </div>
+    
+    <div class="hero-image">
+      <span>🎉</span>
+    </div>
+    
+    <div class="content">
+      <h1>Welcome to 33veyora!</h1>
+      <p class="subtitle-text">
+        Hi {{user_name}},<br><br>
+        Thank you for joining our community! We're excited to help you discover unique stays and unforgettable experiences across India.
+      </p>
+      
+      <a href="{{explore_url}}" class="cta-button">Start Exploring</a>
+      
+      <div class="features">
+        <div class="feature-item">
+          <div class="feature-icon"><span>🏠</span></div>
+          <div class="feature-content">
+            <h3>Find Unique Stays</h3>
+            <p>Browse thousands of handpicked homestays, villas, and apartments across India.</p>
+          </div>
+        </div>
+        
+        <div class="feature-item">
+          <div class="feature-icon"><span>🏔️</span></div>
+          <div class="feature-content">
+            <h3>Book Adventures</h3>
+            <p>Discover thrilling outdoor activities, treks, and experiences curated by local experts.</p>
+          </div>
+        </div>
+        
+        <div class="feature-item">
+          <div class="feature-icon"><span>🎨</span></div>
+          <div class="feature-content">
+            <h3>Learn New Skills</h3>
+            <p>Join workshops for cooking, art, crafts, and more from talented hosts.</p>
+          </div>
+        </div>
+        
+        <div class="feature-item">
+          <div class="feature-icon"><span>🎉</span></div>
+          <div class="feature-content">
+            <h3>Attend Events</h3>
+            <p>Experience local festivals, cultural events, and unique gatherings.</p>
+          </div>
+        </div>
+      </div>
+      
+      <p class="help-text">
+        Questions? Visit our <a href="{{help_url}}" style="color: #1e1b4b;">Help Centre</a> or reach out to our support team anytime.
+      </p>
+    </div>
+    
+    <div class="footer">
+      <div class="footer-links">
+        <a href="{{help_url}}">Help Centre</a>
+        <a href="{{safety_url}}">Safety</a>
+        <a href="{{terms_url}}">Terms</a>
+      </div>
+      <p class="footer-text">
+        © 2024 33veyora. All rights reserved.<br>
+        This email was sent to {{user_email}}
+      </p>
+    </div>
+  </div>
+</body>
+</html>
