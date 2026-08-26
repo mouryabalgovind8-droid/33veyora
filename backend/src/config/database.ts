@@ -4,15 +4,17 @@ import fs from 'fs';
 
 const { Pool } = pg;
 
-// PostgreSQL connection config
-const pool = new Pool({
-  host: process.env.PG_HOST || '127.0.0.1',
-  port: parseInt(process.env.PG_PORT || '5432'),
-  user: process.env.PG_USER || 'postgres',
-  password: process.env.PG_PASSWORD || 'Pmh81@sun',
-  database: process.env.PG_DATABASE || 'havenhorizon',
-  max: 20,
-});
+// PostgreSQL connection config — support DATABASE_URL (Railway/Render/Supabase)
+const pool = process.env.DATABASE_URL
+  ? new Pool({ connectionString: process.env.DATABASE_URL, max: 20 })
+  : new Pool({
+      host: process.env.PG_HOST || '127.0.0.1',
+      port: parseInt(process.env.PG_PORT || '5432'),
+      user: process.env.PG_USER || 'postgres',
+      password: process.env.PG_PASSWORD || '',
+      database: process.env.PG_DATABASE || '33veyora',
+      max: 20,
+    });
 
 // Test connection
 pool.on('connect', () => {

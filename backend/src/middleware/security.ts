@@ -155,7 +155,20 @@ export const requestSizeLimit = (maxSizeKB: number = 1024) => {
 // 6. CORS CONFIGURATION
 // ============================================
 export const corsConfig = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    const allowed = [
+      process.env.FRONTEND_URL,
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://localhost:5175',
+      'https://frontend-gamma-bay-24.vercel.app',
+    ].filter(Boolean);
+    if (!origin || allowed.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],

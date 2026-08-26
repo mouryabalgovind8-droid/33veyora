@@ -16,8 +16,10 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load environment variables
+// Load environment variables (local .env or Railway/Render env vars)
 dotenv.config({ path: path.join(__dirname, '../../.env') });
+dotenv.config({ path: path.join(__dirname, '../.env') });
+dotenv.config();
 
 const app = express();
 const PORT = process.env.BACKEND_PORT || 3001;
