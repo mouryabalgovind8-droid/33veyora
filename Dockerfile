@@ -19,6 +19,9 @@ RUN npx tsc -p tsconfig.build.json
 # Remove devDependencies after build
 RUN npm prune --omit=dev
 
+# Copy database migrations and seeds (needed at runtime)
+COPY database/ ./database/
+
 # Expose port
 EXPOSE 3001
 
