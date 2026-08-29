@@ -10,10 +10,11 @@ RUN npm ci
 
 # Copy backend source and config
 COPY backend/tsconfig.json ./
+COPY backend/tsconfig.build.json ./
 COPY backend/src ./src
 
-# Build TypeScript
-RUN npx tsc
+# Build TypeScript with build config
+RUN npx tsc -p tsconfig.build.json
 
 # Remove devDependencies after build
 RUN npm prune --omit=dev
