@@ -206,7 +206,7 @@ export const verifyOTP = async (req: Request, res: Response) => {
     }
     
     // OTP verified, generate a reset token
-    const resetToken = generateToken({ email, role: 'user' });
+    const resetToken = generateToken({ id: email, email, role: 'user' });
     
     // Delete the OTP
     otpStore.delete(email);
