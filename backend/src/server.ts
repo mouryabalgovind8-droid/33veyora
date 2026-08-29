@@ -66,6 +66,60 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// TEMPORARY: Reset database endpoint (remove after use)
+app.get('/api/admin/reset-db', async (req, res) => {
+  try {
+    const { getDatabase } = await import('./config/database.js');
+    const db = getDatabase();
+    const client = await db.connect();
+    try {
+      // Drop all tables
+      const tables = await client.query(`SELECT tablename FROM pg_tables WHERE schemaname = 'public'`);
+      for (const row of tables.rows) {
+        await client.query(`DROP TABLE IF EXISTS \"${row.tablename}\" CASCADE`);
+      }
+      console.log('🗑️  All tables dropped');
+      res.json({ message: 'Database reset: all tables dropped' });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Reset error:', error);
+    res.status(500).json({ error: 'Reset failed' });
+  }
+});
+
+// TEMPORARY: Re-run migrations + seeds
+app.get('/api/admin/reinit-db', async (req, res) => {
+  try {
+    const { initializeDatabase } = await import('./config/database.js');
+    await initializeDatabase();
+    res.json({ message: 'Database re-initialized with migrations and seeds' });
+  } catch (error) {
+    console.error('Reinit error:', error);
+    res.status(500).json({ error: 'Reinit failed' });
+  }
+});
+
+// TEMPORARY: Create admin account
+app.post('/api/admin/create-admin', async (req, res) => {
+  try {
+    const bcrypt = await import('bcryptjs');
+    const { getDatabase } = await import('./config/database.js');
+    const db = getDatabase();
+    const { name, email, password, role } = req.body;
+    const hashedPassword = await bcrypt.default.hash(password, 10);
+    const result = await db.query(
+      `INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role`,
+      [name, email, hashedPassword, role || 'admin']
+    );
+    res.json({ message: 'Account created', user: result.rows[0] });
+  } catch (error: any) {
+    console.error('Create admin error:', error);
+    res.status(500).json({ error: error.message || 'Failed to create admin' });
+  }
+});
+
 // Import and mount routes
 import authRoutes from './routes/auth.routes.js';
 import listingRoutes from './routes/listing.routes.js';
