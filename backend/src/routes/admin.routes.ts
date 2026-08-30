@@ -12,7 +12,12 @@ import {
   getBookings,
   getRefunds,
   processRefund,
-  getStats
+  getStats,
+  getCommissions,
+  updateCommission,
+  getCategories,
+  getReviews,
+  moderateReview
 } from '../controllers/admin.controller.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 
@@ -47,5 +52,16 @@ router.post('/refunds/:id/process', processRefund);
 
 // Stats
 router.get('/stats', getStats);
+
+// Commissions
+router.get('/commissions', getCommissions);
+router.put('/commissions/:category', updateCommission);
+
+// Categories (system categories with live listing counts)
+router.get('/categories', getCategories);
+
+// Review moderation
+router.get('/reviews', getReviews);
+router.post('/reviews/:id/moderate', moderateReview);
 
 export default router;

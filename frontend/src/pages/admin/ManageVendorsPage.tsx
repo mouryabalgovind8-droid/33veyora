@@ -63,7 +63,7 @@ export default function ManageVendorsPage() {
     try {
       await adminApi.approveVendor(vendorId);
       setVendors(vendors.map(v => 
-        v.id === vendorId ? { ...v, verificationStatus: 'approved' } : v
+        v.id === vendorId ? { ...v, verificationStatus: 'verified' } : v
       ));
     } catch (err: any) {
       alert('Failed to approve vendor');
@@ -94,7 +94,7 @@ export default function ManageVendorsPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'approved': return 'bg-green-100 text-green-700';
+      case 'verified': return 'bg-green-100 text-green-700';
       case 'rejected': return 'bg-red-100 text-red-700';
       default: return 'bg-amber-100 text-amber-700';
     }
@@ -146,7 +146,7 @@ export default function ManageVendorsPage() {
           >
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
+            <option value="verified">Verified</option>
             <option value="rejected">Rejected</option>
           </select>
         </div>

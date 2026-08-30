@@ -47,8 +47,9 @@ app.use(detectSQLInjection);
 // Global rate limiting (60 requests per minute)
 app.use('/api', apiRateLimit);
 
-// Request size limit (1MB)
-app.use(requestSizeLimit(1024));
+// Request size limit (10MB — photos Cloudinary pe upload hote hai;
+// JSON bodies still capped at 1MB by express.json above)
+app.use(requestSizeLimit(10240));
 
 // Static files for uploads (with restricted access)
 app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
@@ -78,6 +79,8 @@ import locationRoutes from './routes/location.routes.js';
 import reportRoutes from './routes/report.routes.js';
 import campaignRoutes from './routes/campaign.routes.js';
 import guideRoutes from './routes/guide.routes.js';
+import vendorRoutes from './routes/vendor.routes.js';
+import uploadRoutes from './routes/upload.routes.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/listings', listingRoutes);
@@ -90,6 +93,9 @@ app.use('/api/locations', locationRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/guides', guideRoutes);
+app.use('/api/vendor', vendorRoutes);
+// Image uploads — photos Cloudinary cloud pe save hoti hai (POST /api/upload/image)
+app.use('/api/upload', uploadRoutes);
 
 // 404 handler
 app.use('/api/*', (req, res) => {

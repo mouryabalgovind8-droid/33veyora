@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Heart, LogOut, Compass, Menu, X } from 'lucide-react';
+import { Search, Heart, LogOut, Compass, Menu, X, Plus, KeyRound } from 'lucide-react';
 import { StaysIcon, AdventuresIcon, WorkshopsIcon, EventsIcon } from './IllustratedIcons';
 import NotificationBell from './NotificationBell';
 
@@ -67,14 +67,36 @@ export default function Navbar() {
               <Search className="h-5 w-5" />
             </Link>
             
-            {/* Become a Host */}
-            <Link 
-              to="/register" 
-              className="hidden sm:flex items-center gap-1 px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-full transition-all"
-            >
-              <StaysIcon className="w-4 h-4" />
-              Host
-            </Link>
+            {/* Vendor quick upload — direct access from the top bar */}
+            {user?.role === 'vendor' && (
+              <>
+                <Link 
+                  to="/vendor/add-listing" 
+                  className="hidden sm:flex items-center gap-1 px-3.5 py-2 text-sm font-semibold bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition-all shadow-sm"
+                >
+                  <Plus className="h-4 w-4" />
+                  Listing
+                </Link>
+                <Link 
+                  to="/vendor/add-listing?category=event" 
+                  className="hidden sm:flex items-center gap-1 px-3.5 py-2 text-sm font-semibold bg-rose-500 text-white rounded-full hover:bg-rose-600 transition-all shadow-sm"
+                >
+                  <Plus className="h-4 w-4" />
+                  Event
+                </Link>
+              </>
+            )}
+            
+            {/* Become a Host — only for guests (logged-in users don't see vendor items) */}
+            {!user && (
+              <Link 
+                to="/register?role=vendor" 
+                className="hidden sm:flex items-center gap-1 px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-full transition-all"
+              >
+                <StaysIcon className="w-4 h-4" />
+                Host
+              </Link>
+            )}
             
             {/* Wishlist */}
             {user && user.role === 'user' && (
@@ -100,7 +122,10 @@ export default function Navbar() {
                 <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 py-2 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200">
                   {user.role === 'vendor' && (
                     <div className="px-4 py-2 border-b border-slate-100">
-                      <span className="inline-block px-2 py-0.5 text-xs font-medium bg-amber-50 text-amber-700 rounded-full border border-amber-200">Host</span>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-amber-50 text-amber-700 rounded-full border border-amber-200">
+                        <KeyRound className="h-3 w-3" />
+                        Host
+                      </span>
                     </div>
                   )}
                   {user.role === 'admin' && (
@@ -231,14 +256,37 @@ export default function Navbar() {
               >
                 Events
               </Link>
-              <div className="border-t border-slate-100 my-2"></div>
-              <Link 
-                to="/register" 
-                className="px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Become a Host
-              </Link>
+              {user?.role === 'vendor' && (
+                <>
+                  <div className="border-t border-slate-100 my-2"></div>
+                  <Link 
+                    to="/vendor/add-listing" 
+                    className="px-4 py-3 text-sm font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    + Upload Listing
+                  </Link>
+                  <Link 
+                    to="/vendor/add-listing?category=event" 
+                    className="px-4 py-3 text-sm font-medium text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    + Upload Event
+                  </Link>
+                </>
+              )}
+              {!user && (
+                <>
+                  <div className="border-t border-slate-100 my-2"></div>
+                  <Link 
+                    to="/register?role=vendor" 
+                    className="px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Become a Host
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         )}

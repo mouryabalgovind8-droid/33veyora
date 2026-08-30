@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRef, useState, type ChangeEvent } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   ArrowLeft, 
   ArrowRight, 
@@ -21,6 +21,9 @@ const amenities = [
 
 export default function AddListingPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // Support direct links like /vendor/add-listing?category=event
+  const initialCategory = searchParams.get('category') === 'event' ? 'event' : 'homestay';
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -28,9 +31,9 @@ export default function AddListingPage() {
     title: '',
     tagline: '',
     description: '',
-    category: 'homestay',
+    category: initialCategory,
     location: { address: '', city: '', state: '', country: 'India' },
-    price: { amountINR: 0, amountUSD: 0, unit: 'per night' },
+    price: { amountINR: 0, amountUSD: 0, unit: 'night' },
     images: [] as string[],
     amenities: [] as string[],
     maxGuests: 2,
@@ -46,6 +49,16 @@ export default function AddListingPage() {
   });
 
   const [imageInput, setImageInput] = useState('');
+
+  // PC se photo upload — hidden file picker + Cloudinary upload state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingImages, setUploadingImages] = useState(false);
+
+  // Event schedule state — hosts must specify when the event starts & ends
+  const [eventStart, setEventStart] = useState('');
+  const [eventEnd, setEventEnd] = useState('');
+  const [prebookingEnabled, setPrebookingEnabled] = useState(true);
+  const [maxParticipants, setMaxParticipants] = useState(50);
 
   const handleChange = (field: string, value: any) => {
     if (field.includes('.')) {
@@ -80,17 +93,98 @@ export default function AddListingPage() {
     }
   };
 
+  // + button se PC/laptop se photos choose hoti hai — backend unhe
+  // Cloudinary pe upload karta hai aur yaha URL add ho jata hai
+  const handleFileSelect = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = ''; // same file dobara select kar sake
+    if (files.length === 0) return;
+
+    setUploadingImages(true);
+    const uploaded: string[] = [];
+    for (const file of files) {
+      try {
+        const data = new FormData();
+        data.append('image', file);
+        const res = await api.post('/upload/image', data, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        if (res.data?.url) uploaded.push(res.data.url);
+      } catch (err: any) {
+        alert(err?.response?.data?.error || `Upload failed for ${file.name}`);
+      }
+    }
+    if (uploaded.length > 0) {
+      setFormData(prev => ({ ...prev, images: [...prev.images, ...uploaded] }));
+    }
+    setUploadingImages(false);
+  };
+
   const removeImage = (index: number) => {
     setFormData(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }));
   };
 
   const handleSubmit = async () => {
+    // Basic client-side validation (backend requires these)
+    if (!formData.location.address || !formData.location.city || !formData.location.state) {
+      alert('Address, city and state are required');
+      return;
+    }
+
+    // Event schedule validation — hosts must specify when the event starts & ends
+    let eventStartIso: string | undefined;
+    let eventEndIso: string | undefined;
+    if (formData.category === 'event') {
+      if (!eventStart || !eventEnd) {
+        alert('Please specify when the event starts and ends');
+        return;
+      }
+      const start = new Date(eventStart);
+      const end = new Date(eventEnd);
+      if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) {
+        alert('Event end must be after event start');
+        return;
+      }
+      eventStartIso = start.toISOString();
+      eventEndIso = end.toISOString();
+    }
+
     try {
       setLoading(true);
-      await api.post('/listings', formData);
+      // Flat payload matching the backend createListing contract
+      await api.post('/listings', {
+        title: formData.title,
+        tagline: formData.tagline,
+        description: formData.description,
+        category: formData.category,
+        locationAddress: formData.location.address,
+        locationCity: formData.location.city,
+        locationState: formData.location.state,
+        locationCountry: formData.location.country,
+        priceInr: Number(formData.price.amountINR),
+        priceUsd: Number(formData.price.amountUSD),
+        priceUnit: formData.price.unit,
+        maxGuests: formData.maxGuests,
+        images: formData.images,
+        amenities: formData.amenities,
+        rules: formData.rules
+          ? formData.rules.split('\n').map((s: string) => s.trim()).filter(Boolean)
+          : [],
+        cancellationPolicy: formData.cancellationPolicy,
+        minDays: formData.minStay,
+        maxDays: formData.maxStay,
+        ...(formData.category === 'event'
+          ? {
+              eventStart: eventStartIso,
+              eventEnd: eventEndIso,
+              prebookingEnabled,
+              maxParticipants: Number(maxParticipants),
+            }
+          : {}),
+      });
       setSuccess(true);
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to create listing');
+      alert(err.response?.data?.error || err.response?.data?.message || 'Failed to create listing');
     } finally {
       setLoading(false);
     }
@@ -290,22 +384,41 @@ export default function AddListingPage() {
           {/* Images */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6">
             <h2 className="text-lg font-semibold text-slate-900 mb-4">Images</h2>
-            <div className="flex gap-2 mb-4">
+            <div className="flex gap-2 mb-1">
               <input
                 type="text"
                 value={imageInput}
                 onChange={(e) => setImageInput(e.target.value)}
                 className="flex-1 px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900"
-                placeholder="Paste image URL"
+                placeholder="Paste image URL and press Enter"
                 onKeyPress={(e) => e.key === 'Enter' && addImage()}
               />
+              {/* + button — photo DIRECT computer/PC se upload hogi (Cloudinary cloud pe save) */}
               <button
-                onClick={addImage}
-                className="px-4 py-3 bg-slate-900 text-white rounded-xl hover:bg-slate-800"
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingImages}
+                title="Upload photos from your computer"
+                className="px-4 py-3 bg-slate-900 text-white rounded-xl hover:bg-slate-800 disabled:opacity-60 flex items-center justify-center"
               >
-                <Plus className="h-5 w-5" />
+                {uploadingImages ? (
+                  <span className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Plus className="h-5 w-5" />
+                )}
               </button>
             </div>
+            <p className="text-xs text-slate-500 mb-3">
+              + button dabaao aur apne computer se photos choose karo (multiple select ho sakta hai). Ya URL paste karke Enter dabao.
+            </p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              multiple
+              className="hidden"
+              onChange={handleFileSelect}
+            />
             <div className="grid grid-cols-3 gap-3">
               {formData.images.map((img, i) => (
                 <div key={i} className="relative">
@@ -369,6 +482,57 @@ export default function AddListingPage() {
           </div>
         </div>
       )}
+
+          {/* Event Schedule — required for event listings */}
+          {formData.category === 'event' && (
+            <div className="bg-rose-50/60 rounded-2xl border border-rose-200 p-6">
+              <h2 className="text-lg font-semibold text-slate-900 mb-1">Event Schedule</h2>
+              <p className="text-sm text-rose-600 mb-4">
+                Guests can pre-book this event until it starts. Specify when it begins and ends.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Event Starts *</label>
+                  <input
+                    type="datetime-local"
+                    value={eventStart}
+                    onChange={(e) => setEventStart(e.target.value)}
+                    className="w-full px-4 py-3 border border-rose-200 rounded-xl focus:ring-2 focus:ring-rose-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Event Ends *</label>
+                  <input
+                    type="datetime-local"
+                    value={eventEnd}
+                    onChange={(e) => setEventEnd(e.target.value)}
+                    className="w-full px-4 py-3 border border-rose-200 rounded-xl focus:ring-2 focus:ring-rose-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Max Participants</label>
+                  <input
+                    type="number"
+                    value={maxParticipants}
+                    onChange={(e) => setMaxParticipants(parseInt(e.target.value) || 50)}
+                    min={1}
+                    className="w-full px-4 py-3 border border-rose-200 rounded-xl focus:ring-2 focus:ring-rose-400"
+                  />
+                </div>
+                <div className="flex items-end pb-1">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={prebookingEnabled}
+                      onChange={(e) => setPrebookingEnabled(e.target.checked)}
+                      className="w-5 h-5 text-rose-500"
+                    />
+                    <span className="text-sm font-medium text-slate-700">Allow pre-booking</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
 
       {/* Navigation Buttons */}
       <div className="flex justify-between mt-8">

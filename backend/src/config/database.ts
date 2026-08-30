@@ -1,6 +1,12 @@
 import pg from 'pg';
 import path from 'path';
 import fs from 'fs';
+import dotenv from 'dotenv';
+
+// Load env vars so standalone CLI usage (db:migrate / db:seed) works too
+dotenv.config({ path: path.join(process.cwd(), '..', '.env') });
+dotenv.config({ path: path.join(process.cwd(), '.env') });
+dotenv.config();
 
 const { Pool } = pg;
 
@@ -149,4 +155,22 @@ export async function initializeDatabase(): Promise<void> {
   await runMigrations();
   await runSeeds();
   console.log('✅ Database ready');
+}
+
+// CLI support: `npm run db:migrate` / `npm run db:seed`
+const cliArgs = process.argv.slice(2);
+if (cliArgs.includes('migrate')) {
+  runMigrations()
+    .then(() => process.exit(0))
+    .catch((err) => {
+      console.error('❌ Migration failed:', err);
+      process.exit(1);
+    });
+} else if (cliArgs.includes('seed')) {
+  runSeeds()
+    .then(() => process.exit(0))
+    .catch((err) => {
+      console.error('❌ Seed failed:', err);
+      process.exit(1);
+    });
 }

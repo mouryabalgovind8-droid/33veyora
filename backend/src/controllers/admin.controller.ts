@@ -448,3 +448,155 @@ export const getStats = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+// ============================================
+// CATEGORIES / COMMISSIONS / REVIEWS MODERATION
+// ============================================
+
+const ADMIN_MANAGED_CATEGORIES = [
+  'homestay', 'hotel', 'resort', 'villa', 'apartment', 'guesthouse',
+  'cottage', 'hostel', 'private_room', 'camp', 'luxury',
+  'adventure', 'workshop', 'event',
+];
+
+// Get commission rules (ensures every managed category has a row)
+export const getCommissions = async (req: Request, res: Response) => {
+  try {
+    const pool = getDatabase();
+
+    const existing = await pool.query('SELECT category FROM commissions');
+    const existingSet = new Set(existing.rows.map((r) => r.category));
+    for (const category of ADMIN_MANAGED_CATEGORIES) {
+      if (!existingSet.has(category)) {
+        await pool.query(
+          'INSERT INTO commissions (id, category, percentage) VALUES ($1, $2, $3)',
+          [uuidv4(), category, 10]
+        );
+      }
+    }
+
+    const commissions = (await pool.query(
+      'SELECT id, category, percentage, is_active, created_at, updated_at FROM commissions ORDER BY category'
+    )).rows;
+
+    res.json({ commissions });
+  } catch (error) {
+    console.error('Get commissions error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// Update commission percentage for a category
+export const updateCommission = async (req: Request, res: Response) => {
+  try {
+    const pool = getDatabase();
+    const { category } = req.params;
+    const { percentage } = req.body;
+
+    const value = Number(percentage);
+    if (percentage === undefined || percentage === null || isNaN(value) || value < 0 || value > 100) {
+      return res.status(400).json({ error: 'Percentage must be a number between 0 and 100' });
+    }
+
+    const result = await pool.query(
+      'UPDATE commissions SET percentage = $1, updated_at = NOW() WHERE category = $2 RETURNING *',
+      [value, category]
+    );
+
+    if (result.rows.length === 0) {
+      const created = await pool.query(
+        'INSERT INTO commissions (id, category, percentage) VALUES ($1, $2, $3) RETURNING *',
+        [uuidv4(), category, value]
+      );
+      return res.json({ message: 'Commission created', commission: created.rows[0] });
+    }
+
+    res.json({ message: 'Commission updated', commission: result.rows[0] });
+  } catch (error) {
+    console.error('Update commission error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// Get all system categories with live listing counts + commission rate
+export const getCategories = async (req: Request, res: Response) => {
+  try {
+    const pool = getDatabase();
+
+    const counts = (await pool.query(`
+      SELECT category,
+             COUNT(*)::int as listing_count,
+             COALESCE(SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END), 0)::int as approved_count
+      FROM listings
+      GROUP BY category
+    `)).rows;
+
+    const commissions = (await pool.query('SELECT category, percentage FROM commissions')).rows;
+
+    const countMap = new Map(counts.map((r) => [r.category, r]));
+    const commissionMap = new Map(commissions.map((r) => [r.category, r.percentage]));
+
+    const categories = ADMIN_MANAGED_CATEGORIES.map((category) => ({
+      category,
+      listingCount: countMap.get(category)?.listing_count || 0,
+      approvedCount: countMap.get(category)?.approved_count || 0,
+      commissionPercentage: commissionMap.get(category) ?? 10,
+    }));
+
+    res.json({ categories });
+  } catch (error) {
+    console.error('Get categories error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// Get all reviews (admin moderation view)
+export const getReviews = async (req: Request, res: Response) => {
+  try {
+    const pool = getDatabase();
+
+    const reviews = (await pool.query(`
+      SELECT r.id, r.rating, r.comment, r.sub_ratings, r.host_response, r.is_verified, r.created_at,
+             u.name as guest_name, l.title as listing_title, l.location_city
+      FROM reviews r
+      JOIN users u ON r.user_id = u.id
+      JOIN listings l ON r.listing_id = l.id
+      ORDER BY r.created_at DESC
+      LIMIT 200
+    `)).rows;
+
+    res.json({ reviews });
+  } catch (error) {
+    console.error('Get reviews error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// Moderate a review: approve (verify) or reject (remove)
+export const moderateReview = async (req: Request, res: Response) => {
+  try {
+    const pool = getDatabase();
+    const { id } = req.params;
+    const { action } = req.body;
+
+    const reviewResult = await pool.query('SELECT id FROM reviews WHERE id = $1', [id]);
+    if (reviewResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
+
+    if (action === 'approve') {
+      await pool.query('UPDATE reviews SET is_verified = 1 WHERE id = $1', [id]);
+      return res.json({ message: 'Review approved' });
+    }
+
+    if (action === 'reject') {
+      await pool.query('DELETE FROM reviews WHERE id = $1', [id]);
+      return res.json({ message: 'Review removed' });
+    }
+
+    return res.status(400).json({ error: 'Invalid action. Use "approve" or "reject"' });
+  } catch (error) {
+    console.error('Moderate review error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};

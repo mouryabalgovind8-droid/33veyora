@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import BackButton from '../../components/common/BackButton';
 
 // Declare global types for Google and Facebook SDKs
 declare global {
@@ -156,6 +157,8 @@ export default function LoginPage() {
   
   return (
     <div className="min-h-screen flex">
+      {/* Back arrow — top-left corner */}
+      <BackButton className="fixed left-4 top-4 z-50" />
       {/* Left side - Form */}
       <div className="flex-1 flex items-center justify-center p-8 bg-white">
         <div className="w-full max-w-md">

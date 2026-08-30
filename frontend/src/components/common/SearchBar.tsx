@@ -1,11 +1,38 @@
 import { useState, useRef, useEffect } from 'react';
-import { MapPin, Calendar, Users, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { MapPin, Calendar, Users, Search, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 import { searchLocations, type CitySuggestion } from '../../data/indianLocations';
 
+// Timezone-safe: local date → 'YYYY-MM-DD' (UTC shift NAHI hota — India +5:30 me bhi sahi)
+function toYMD(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// 'YYYY-MM-DD' → "Sep 4, 2026" (display ke liye)
+function formatYMD(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// 'YYYY-MM-DD' + N din → 'YYYY-MM-DD' (timezone-safe local arithmetic)
+function addDaysYMD(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return toYMD(new Date(y, m - 1, d + days));
+}
+
 // Premium Date Picker
-function DatePicker({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
+function DatePicker({ value, onChange, placeholder, minDate, maxDate, minErrorMessage, maxErrorMessage }: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  minDate?: string;   // isse purani dates disabled (grey)
+  maxDate?: string;   // isse aage ki date select karne par error popup
+  minErrorMessage?: string;
+  maxErrorMessage?: string;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [error, setError] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -38,9 +65,33 @@ function DatePicker({ value, onChange, placeholder }: { value: string; onChange:
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
   const handleDateClick = (day: number) => {
-    const selected = new Date(year, month, day);
-    const formatted = selected.toISOString().split('T')[0];
-    onChange(formatted);
+    const selected = toYMD(new Date(year, month, day));
+    if (maxDate && selected > maxDate) {
+      setError(maxErrorMessage || `You can't select a date after ${formatYMD(maxDate)}.`);
+      return;
+    }
+    if (minDate && selected < minDate) {
+      setError(minErrorMessage || `You can't select a date before ${formatYMD(minDate)}.`);
+      return;
+    }
+    setError(null);
+    onChange(selected);
+    setIsOpen(false);
+  };
+
+  // Quick buttons (Tomorrow / Next week / Next month) ke liye same validation
+  const applyQuickDate = (d: Date) => {
+    const selected = toYMD(d);
+    if (maxDate && selected > maxDate) {
+      setError(maxErrorMessage || `You can't select a date after ${formatYMD(maxDate)}.`);
+      return;
+    }
+    if (minDate && selected < minDate) {
+      setError(minErrorMessage || `You can't select a date before ${formatYMD(minDate)}.`);
+      return;
+    }
+    setError(null);
+    onChange(selected);
     setIsOpen(false);
   };
 
@@ -50,21 +101,33 @@ function DatePicker({ value, onChange, placeholder }: { value: string; onChange:
     return date < today;
   };
 
+  // minDate se pehle ki dates = completely disabled (grey, click nahi hota)
+  const isDisabled = (day: number) => {
+    if (!day || isPast(day)) return true;
+    if (minDate && toYMD(new Date(year, month, day)) < minDate) return true;
+    return false;
+  };
+
+  // maxDate ke baad ki dates = clickable, par select karne par error popup aayega
+  const isAfterMax = (day: number) => {
+    if (!day || !maxDate) return false;
+    return toYMD(new Date(year, month, day)) > maxDate;
+  };
+
   const isSelected = (day: number) => {
     const date = new Date(year, month, day);
-    return value === date.toISOString().split('T')[0];
+    return value === toYMD(date);
   };
 
   const formatDisplay = (dateStr: string) => {
     if (!dateStr) return placeholder;
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return formatYMD(dateStr);
   };
 
   return (
     <div ref={ref} className="relative flex-1">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => { setIsOpen(!isOpen); setError(null); }}
         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 rounded-xl transition-colors text-left"
       >
         <Calendar className="h-5 w-5 text-slate-400 flex-shrink-0" />
@@ -78,6 +141,13 @@ function DatePicker({ value, onChange, placeholder }: { value: string; onChange:
 
       {isOpen && (
         <div className="absolute top-full left-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+          {/* Invalid selection popup */}
+          {error && (
+            <div className="mb-3 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
+              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-500" />
+              <p className="text-xs font-medium leading-snug text-red-600">{error}</p>
+            </div>
+          )}
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <button
@@ -111,11 +181,13 @@ function DatePicker({ value, onChange, placeholder }: { value: string; onChange:
             {days.map((day, idx) => (
               <button
                 key={idx}
-                disabled={!day || isPast(day)}
-                onClick={() => day && !isPast(day) && handleDateClick(day)}
+                disabled={!day || isDisabled(day)}
+                onClick={() => day && !isDisabled(day) && handleDateClick(day)}
                 className={`aspect-square flex items-center justify-center text-sm rounded-full transition-all
                   ${!day ? 'invisible' : ''}
-                  ${day && isPast(day) ? 'text-slate-300 cursor-not-allowed' : 'hover:bg-slate-100 cursor-pointer'}
+                  ${day && isDisabled(day) ? 'text-slate-300 cursor-not-allowed' : ''}
+                  ${day && !isDisabled(day) && isAfterMax(day) ? 'text-red-300 hover:bg-red-50 cursor-pointer' : ''}
+                  ${day && !isDisabled(day) && !isAfterMax(day) ? 'hover:bg-slate-100 cursor-pointer' : ''}
                   ${day && isSelected(day) ? 'bg-slate-900 text-white hover:bg-slate-800' : ''}
                 `}
               >
@@ -130,8 +202,7 @@ function DatePicker({ value, onChange, placeholder }: { value: string; onChange:
               onClick={() => {
                 const tomorrow = new Date();
                 tomorrow.setDate(tomorrow.getDate() + 1);
-                onChange(tomorrow.toISOString().split('T')[0]);
-                setIsOpen(false);
+                applyQuickDate(tomorrow);
               }}
               className="flex-1 px-3 py-2 text-xs font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
             >
@@ -141,8 +212,7 @@ function DatePicker({ value, onChange, placeholder }: { value: string; onChange:
               onClick={() => {
                 const nextWeek = new Date();
                 nextWeek.setDate(nextWeek.getDate() + 7);
-                onChange(nextWeek.toISOString().split('T')[0]);
-                setIsOpen(false);
+                applyQuickDate(nextWeek);
               }}
               className="flex-1 px-3 py-2 text-xs font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
             >
@@ -152,8 +222,7 @@ function DatePicker({ value, onChange, placeholder }: { value: string; onChange:
               onClick={() => {
                 const nextMonth = new Date();
                 nextMonth.setMonth(nextMonth.getMonth() + 1);
-                onChange(nextMonth.toISOString().split('T')[0]);
-                setIsOpen(false);
+                applyQuickDate(nextMonth);
               }}
               className="flex-1 px-3 py-2 text-xs font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
             >
@@ -239,6 +308,7 @@ function GuestsSelector({ value, onChange }: { value: number; onChange: (v: numb
 
 // Main Search Bar
 export default function SearchBar({ variant = 'hero' }: { variant?: 'hero' | 'compact' }) {
+  const navigate = useNavigate();
   const [location, setLocation] = useState('');
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
@@ -257,6 +327,14 @@ export default function SearchBar({ variant = 'hero' }: { variant?: 'hero' | 'co
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  // Auto-fix: agar check-out, check-in ke baad ka nahi hai to usse reset kar do
+  // (e.g. pehle se invalid state bacha ho to turant sahi ho jata hai)
+  useEffect(() => {
+    if (checkIn && checkOut && checkOut <= checkIn) {
+      setCheckOut('');
+    }
+  }, [checkIn, checkOut]);
+
   const handleLocationChange = (value: string) => {
     setLocation(value);
     if (value.length >= 1) {
@@ -270,16 +348,9 @@ export default function SearchBar({ variant = 'hero' }: { variant?: 'hero' | 'co
   };
 
   const handleSuggestionClick = (suggestion: CitySuggestion) => {
+    // Only fill the location — the user still picks dates & guests before searching
     setLocation(suggestion.city);
     setShowSuggestions(false);
-    // Immediately search with the selected city
-    const params = new URLSearchParams();
-    params.set('location', suggestion.city);
-    params.set('city', suggestion.city);
-    if (checkIn) params.set('checkin', checkIn);
-    if (checkOut) params.set('checkout', checkOut);
-    if (guests > 0) params.set('guests', guests.toString());
-    window.location.href = `/search?${params.toString()}`;
   };
 
   const handleSearch = () => {
@@ -288,10 +359,27 @@ export default function SearchBar({ variant = 'hero' }: { variant?: 'hero' | 'co
       params.set('location', location);
       params.set('city', location);
     }
-    if (checkIn) params.set('checkin', checkIn);
-    if (checkOut) params.set('checkout', checkOut);
+
+    // Hero bar: dates & guests are part of the search flow — require them first
+    if (variant !== 'compact') {
+      if (!checkIn || !checkOut) {
+        alert('Please select check-in and check-out dates first');
+        return;
+      }
+      if (new Date(checkOut) <= new Date(checkIn)) {
+        alert('Check-out date must be after the check-in date. Please update your dates.');
+        return;
+      }
+      if (!guests || guests < 1) {
+        alert('Please select the number of guests');
+        return;
+      }
+    }
+
+    params.set('checkin', checkIn);
+    params.set('checkout', checkOut);
     if (guests > 0) params.set('guests', guests.toString());
-    window.location.href = `/search?${params.toString()}`;
+    navigate(`/search?${params.toString()}`);
   };
 
   if (variant === 'compact') {      return (
@@ -380,14 +468,26 @@ export default function SearchBar({ variant = 'hero' }: { variant?: 'hero' | 'co
           )}
         </div>
 
-        {/* Check in */}
+        {/* Check in — check-out set hai to usse aage ki dates select karne par error popup */}
         <div className="flex-1 border-b md:border-b-0 md:border-r border-slate-100">
-          <DatePicker value={checkIn} onChange={setCheckIn} placeholder="Check in" />
+          <DatePicker
+            value={checkIn}
+            onChange={setCheckIn}
+            placeholder="Check in"
+            maxDate={checkOut || undefined}
+            maxErrorMessage={checkOut ? `You can't select a check-in date after the check-out date (${formatYMD(checkOut)}). Please pick an earlier date.` : undefined}
+          />
         </div>
 
-        {/* Check out */}
+        {/* Check out — check-in se pehle/equal ki dates disabled (grey) */}
         <div className="flex-1 border-b md:border-b-0 md:border-r border-slate-100">
-          <DatePicker value={checkOut} onChange={setCheckOut} placeholder="Check out" />
+          <DatePicker
+            value={checkOut}
+            onChange={setCheckOut}
+            placeholder="Check out"
+            minDate={checkIn ? addDaysYMD(checkIn, 1) : undefined}
+            minErrorMessage={checkIn ? `You can't select a check-out date before the check-in date (${formatYMD(checkIn)}). Please pick a later date.` : undefined}
+          />
         </div>
 
         {/* Guests */}

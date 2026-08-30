@@ -51,42 +51,61 @@ export const AddListingModal: React.FC<AddListingModalProps> = ({
     'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1200&q=80'
   );
   const [amenitiesStr, setAmenitiesStr] = useState('Wi-Fi, Free Parking, Kitchen, Breakfast Included');
-  const [hostName, setHostName] = useState('Aarav Sharma');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Event schedule — required when category is 'event'
+  const [eventStart, setEventStart] = useState('');
+  const [eventEnd, setEventEnd] = useState('');
+  const [prebookingEnabled, setPrebookingEnabled] = useState(true);
+  const [maxParticipants, setMaxParticipants] = useState(50);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
+      // Event validation — start & end are mandatory for events
+      let eventStartIso: string | undefined;
+      let eventEndIso: string | undefined;
+      if (category === 'event') {
+        if (!eventStart || !eventEnd) {
+          alert('Please specify when the event starts and ends');
+          setIsSubmitting(false);
+          return;
+        }
+        const start = new Date(eventStart);
+        const end = new Date(eventEnd);
+        if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) {
+          alert('Event end must be after event start');
+          setIsSubmitting(false);
+          return;
+        }
+        eventStartIso = start.toISOString();
+        eventEndIso = end.toISOString();
+      }
+
       const payload = {
         title,
         category,
         tagline,
         description,
-        location: {
-          city,
-          state,
-          country: 'India',
-          address,
-        },
-        price: {
-          amountINR: Number(priceINR),
-          amountUSD: Number(priceUSD),
-          unit: priceUnit,
-        },
-        images: [imageUrl],
-        host: {
-          id: `host-${Date.now()}`,
-          name: hostName,
-          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-          superhost: true,
-          joinedYear: '2026',
-          responseRate: '100% within an hour',
-          bio: 'Hospitable verified experience host on 33veyora.',
-        },
+        locationAddress: address,
+        locationCity: city,
+        locationState: state,
+        locationCountry: 'India',
+        priceInr: Number(priceINR),
+        priceUsd: Number(priceUSD),
+        priceUnit,
         maxGuests: Number(maxGuests),
+        images: [imageUrl],
         amenities: amenitiesStr.split(',').map((s) => s.trim()),
+        ...(category === 'event'
+          ? {
+              eventStart: eventStartIso,
+              eventEnd: eventEndIso,
+              prebookingEnabled,
+              maxParticipants: Number(maxParticipants),
+            }
+          : {}),
       };
 
       const res = await fetch('/api/listings', {
@@ -286,6 +305,54 @@ export const AddListingModal: React.FC<AddListingModalProps> = ({
               <p className="text-[10px] text-slate-400 mt-0.5">Full address is required for listings</p>
             </div>
           </div>
+
+          {/* Event Schedule — required for event listings */}
+          {category === 'event' && (
+            <div className="bg-rose-50/60 border border-rose-200 rounded-xl p-3 space-y-3">
+              <p className="font-semibold text-rose-700">Event Schedule * <span className="font-normal text-slate-500">(guests can pre-book until it starts)</span></p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-600 mb-1 font-semibold">Event Starts *</label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={eventStart}
+                    onChange={(e) => setEventStart(e.target.value)}
+                    className="w-full bg-slate-50 border border-rose-200 rounded-xl p-2.5 text-slate-800 focus:outline-none focus:border-rose-500 font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-600 mb-1 font-semibold">Event Ends *</label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={eventEnd}
+                    onChange={(e) => setEventEnd(e.target.value)}
+                    className="w-full bg-slate-50 border border-rose-200 rounded-xl p-2.5 text-slate-800 focus:outline-none focus:border-rose-500 font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-600 mb-1 font-semibold">Max Participants</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={maxParticipants}
+                    onChange={(e) => setMaxParticipants(parseInt(e.target.value) || 50)}
+                    className="w-full bg-slate-50 border border-rose-200 rounded-xl p-2.5 text-slate-800 focus:outline-none focus:border-rose-500 font-medium"
+                  />
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer self-end pb-2">
+                  <input
+                    type="checkbox"
+                    checked={prebookingEnabled}
+                    onChange={(e) => setPrebookingEnabled(e.target.checked)}
+                    className="w-4 h-4 text-rose-500"
+                  />
+                  <span className="text-slate-600 font-semibold">Allow pre-booking</span>
+                </label>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-3 gap-3">
             <div>

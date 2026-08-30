@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
+import { v4 as uuidv4 } from 'uuid';
 import { getDatabase } from '../config/database.js';
 import { generateToken } from '../middleware/auth.js';
 import { NotificationService } from '../services/notification.service.js';
@@ -30,8 +31,11 @@ export const register = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Password must contain at least one number' });
     }
     
-    // SECURITY: Only allow 'user' role on registration. Admin/vendor must be created by admin.
-    const allowedRole = 'user';
+    // SECURITY: Only 'user' and 'vendor' can self-register (BRD 1 §1.3: vendors
+    // register as accommodation providers). 'admin' can never be self-assigned.
+    // New vendors start unverified and must be approved by an admin before
+    // their listings can go live.
+    const allowedRole = role === 'vendor' ? 'vendor' : 'user';
     
     const pool = getDatabase();
     
@@ -51,7 +55,16 @@ export const register = async (req: Request, res: Response) => {
     );
     
     const user = result.rows[0];
-    
+
+    // Vendors get a business profile that starts pending admin verification
+    if (allowedRole === 'vendor') {
+      const businessName = (req.body.businessName || `${name}'s Stay`).toString().trim().slice(0, 120);
+      await pool.query(
+        'INSERT INTO vendors (id, user_id, business_name, verification_status) VALUES ($1, $2, $3, $4)',
+        [uuidv4(), user.id, businessName, 'pending']
+      );
+    }
+
     // Generate token
     const token = generateToken({ id: user.id, email, role: user.role });
     

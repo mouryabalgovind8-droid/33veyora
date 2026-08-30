@@ -4,7 +4,8 @@ import { Link } from 'react-router-dom';
 import { 
   User, Mail, Phone, Shield, CreditCard, Heart, 
   Settings, LogOut, ChevronRight, Camera, Star,
-  MapPin, Calendar, Edit2, Check, X, Bell, HelpCircle
+  MapPin, Calendar, Edit2, Check, X, Bell, HelpCircle,
+  KeyRound, Plus
 } from 'lucide-react';
 
 export default function ProfilePage() {
@@ -16,7 +17,90 @@ export default function ProfilePage() {
     logout();
   };
   
-  const menuItems = [
+  // Role-based quick actions — each user type only sees their own permissions
+  const menuItems = user?.role === 'vendor' ? [
+    { 
+      id: 'dashboard', 
+      label: 'Vendor Dashboard', 
+      icon: <Shield className="h-5 w-5" />,
+      description: 'Manage your host account',
+      link: '/vendor',
+      color: 'bg-amber-100 text-amber-600'
+    },
+    { 
+      id: 'add-listing', 
+      label: 'Upload Listing / Event', 
+      icon: <Plus className="h-5 w-5" />,
+      description: 'Add a new stay or event',
+      link: '/vendor/add-listing',
+      color: 'bg-indigo-100 text-indigo-600'
+    },
+    { 
+      id: 'listings', 
+      label: 'My Listings', 
+      icon: <MapPin className="h-5 w-5" />,
+      description: 'Manage what you host',
+      link: '/vendor/listings',
+      color: 'bg-blue-100 text-blue-600'
+    },
+    { 
+      id: 'bookings', 
+      label: 'Guest Bookings', 
+      icon: <Calendar className="h-5 w-5" />,
+      description: 'Bookings from your guests',
+      link: '/vendor/bookings',
+      color: 'bg-green-100 text-green-600'
+    },
+    { 
+      id: 'help', 
+      label: 'Help Centre', 
+      icon: <HelpCircle className="h-5 w-5" />,
+      description: 'Get support and answers',
+      link: '/help',
+      color: 'bg-amber-100 text-amber-600'
+    },
+  ] : user?.role === 'admin' ? [
+    { 
+      id: 'dashboard', 
+      label: 'Admin Dashboard', 
+      icon: <Shield className="h-5 w-5" />,
+      description: 'Platform overview & stats',
+      link: '/admin',
+      color: 'bg-purple-100 text-purple-600'
+    },
+    { 
+      id: 'users', 
+      label: 'Manage Users', 
+      icon: <User className="h-5 w-5" />,
+      description: 'User accounts & roles',
+      link: '/admin/users',
+      color: 'bg-blue-100 text-blue-600'
+    },
+    { 
+      id: 'vendors', 
+      label: 'Manage Vendors', 
+      icon: <KeyRound className="h-5 w-5" />,
+      description: 'Verification & approvals',
+      link: '/admin/vendors',
+      color: 'bg-amber-100 text-amber-600'
+    },
+    { 
+      id: 'listings', 
+      label: 'Manage Listings', 
+      icon: <MapPin className="h-5 w-5" />,
+      description: 'Approve or reject listings',
+      link: '/admin/listings',
+      color: 'bg-green-100 text-green-600'
+    },
+    { 
+      id: 'help', 
+      label: 'Help Centre', 
+      icon: <HelpCircle className="h-5 w-5" />,
+      description: 'Get support and answers',
+      link: '/help',
+      color: 'bg-amber-100 text-amber-600'
+    },
+  ] : [
     { 
       id: 'bookings', 
       label: 'My Bookings', 
@@ -92,10 +176,22 @@ export default function ProfilePage() {
                 <h1 className="text-2xl font-bold text-slate-900">{user?.name || 'User'}</h1>
                 <p className="text-slate-500 mt-1">{user?.email}</p>
                 <div className="flex items-center justify-center sm:justify-start gap-4 mt-3">
-                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-sm font-medium">
-                    <Shield className="h-4 w-4" />
-                    {user?.role === 'vendor' ? 'Host' : user?.role === 'admin' ? 'Admin' : 'Guest'}
-                  </span>
+                  {user?.role === 'vendor' ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-sm font-semibold">
+                      <KeyRound className="h-4 w-4" />
+                      Host
+                    </span>
+                  ) : user?.role === 'admin' ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-50 text-purple-700 border border-purple-200 rounded-full text-sm font-semibold">
+                      <Shield className="h-4 w-4" />
+                      Admin
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full text-sm font-semibold">
+                      <User className="h-4 w-4" />
+                      Guest
+                    </span>
+                  )}
                   <span className="text-sm text-slate-500">
                     Member since 2026
                   </span>

@@ -50,9 +50,10 @@ export const getListings = async (req: Request, res: Response) => {
     const countResult = await pool.query(`SELECT COUNT(*) as total FROM (${query}) as sub`, params);
     const total = parseInt(countResult.rows[0]?.total || '0');
 
-    // Pagination
+    // Pagination — event listings are ordered by soonest start date
     const offset = (Number(page) - 1) * Number(limit);
-    query += ` ORDER BY l.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    const orderBy = category === 'event' ? 'l.event_start ASC NULLS LAST' : 'l.created_at DESC';
+    query += ` ORDER BY ${orderBy} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(Number(limit), offset);
 
     const result = await pool.query(query, params);
@@ -97,10 +98,15 @@ export const getListing = async (req: Request, res: Response) => {
 
     const listing: any = result.rows[0];
     
-    // Parse JSON fields
-    listing.images = listing.images ? JSON.parse(listing.images) : [];
-    listing.amenities = listing.amenities ? JSON.parse(listing.amenities) : [];
-    listing.rules = listing.rules ? JSON.parse(listing.rules) : [];
+    // Parse JSON fields (tolerate plain-text values from older/seeded rows)
+    const safeParse = (val: any, fallback: any) => {
+      if (val === null || val === undefined || val === '') return fallback;
+      if (typeof val !== 'string') return val;
+      try { return JSON.parse(val); } catch { return [val]; }
+    };
+    listing.images = safeParse(listing.images, []);
+    listing.amenities = safeParse(listing.amenities, []);
+    listing.rules = safeParse(listing.rules, []);
 
     // Get availability for next 30 days
     const availability = await pool.query(`
@@ -157,7 +163,8 @@ export const createListing = async (req: Request, res: Response) => {
       locationAddress, locationCity, locationState, locationCountry,
       priceInr, priceUsd, priceUnit,
       maxGuests, images, amenities, rules,
-      cancellationPolicy, minDays, maxDays
+      cancellationPolicy, minDays, maxDays,
+      eventStart, eventEnd, prebookingEnabled, maxParticipants
     } = req.body;
 
     // Validation
@@ -190,6 +197,25 @@ export const createListing = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Description must be under 5000 characters' });
     }
 
+    // EVENT VALIDATION: event listings require a valid schedule
+    let eventStartIso: string | null = null;
+    let eventEndIso: string | null = null;
+    if (category === 'event') {
+      if (!eventStart || !eventEnd) {
+        return res.status(400).json({ error: 'Event start and end date/time are required for event listings' });
+      }
+      const start = new Date(eventStart);
+      const end = new Date(eventEnd);
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        return res.status(400).json({ error: 'Invalid event date/time format' });
+      }
+      if (end <= start) {
+        return res.status(400).json({ error: 'Event end must be after event start' });
+      }
+      eventStartIso = start.toISOString();
+      eventEndIso = end.toISOString();
+    }
+
     const listingId = uuidv4();
     await pool.query(`
       INSERT INTO listings (
@@ -197,8 +223,9 @@ export const createListing = async (req: Request, res: Response) => {
         location_address, location_city, location_state, location_country,
         price_inr, price_usd, price_unit, max_guests,
         images, amenities, rules, cancellation_policy,
-        min_days, max_days, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, 'pending')
+        min_days, max_days, status,
+        event_start, event_end, prebooking_enabled, max_participants
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, 'pending', $21, $22, $23, $24)
     `, [
       listingId, vendorId, title, tagline || null, description || null, category,
       locationAddress || null, locationCity || null, locationState || null, locationCountry || 'India',
@@ -206,7 +233,10 @@ export const createListing = async (req: Request, res: Response) => {
       maxGuests || 1,
       JSON.stringify(images || []), JSON.stringify(amenities || []),
       JSON.stringify(rules || []), cancellationPolicy || 'Full refund if cancelled 48 hours before check-in',
-      minDays || 1, maxDays || null
+      minDays || 1, maxDays || null,
+      eventStartIso, eventEndIso,
+      prebookingEnabled === false ? false : true,
+      maxParticipants ? Number(maxParticipants) : null
     ]);
 
     res.status(201).json({
@@ -240,7 +270,8 @@ export const updateListing = async (req: Request, res: Response) => {
       locationAddress, locationCity, locationState, locationCountry,
       priceInr, priceUsd, priceUnit,
       maxGuests, images, amenities, rules,
-      cancellationPolicy, minDays, maxDays
+      cancellationPolicy, minDays, maxDays,
+      eventStart, eventEnd, prebookingEnabled, maxParticipants
     } = req.body;
 
     await pool.query(`
@@ -263,8 +294,12 @@ export const updateListing = async (req: Request, res: Response) => {
         cancellation_policy = COALESCE($16, cancellation_policy),
         min_days = COALESCE($17, min_days),
         max_days = COALESCE($18, max_days),
+        event_start = COALESCE($19, event_start),
+        event_end = COALESCE($20, event_end),
+        prebooking_enabled = COALESCE($21, prebooking_enabled),
+        max_participants = COALESCE($22, max_participants),
         updated_at = NOW()
-      WHERE id = $19
+      WHERE id = $23
     `, [
       title || null, tagline || null, description || null, category || null,
       locationAddress || null, locationCity || null, locationState || null, locationCountry || null,
@@ -275,6 +310,10 @@ export const updateListing = async (req: Request, res: Response) => {
       rules ? JSON.stringify(rules) : null,
       cancellationPolicy || null,
       minDays || null, maxDays || null,
+      eventStart ? new Date(eventStart).toISOString() : null,
+      eventEnd ? new Date(eventEnd).toISOString() : null,
+      typeof prebookingEnabled === 'boolean' ? prebookingEnabled : null,
+      maxParticipants ? Number(maxParticipants) : null,
       id
     ]);
 

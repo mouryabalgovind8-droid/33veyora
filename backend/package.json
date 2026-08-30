@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx src/server.ts",
-    "build": "tsc",
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.build.json",
     "start": "node dist/server.js",
     "lint": "tsc --noEmit",
-    "test": "jest --forceExit --detectOpenHandles",
+    "test": "jest --forceExit --detectOpenHandles --passWithNoTests",
     "db:migrate": "tsx src/config/database.ts migrate",
     "db:seed": "tsx src/config/database.ts seed"
   },
@@ -15,6 +15,7 @@
     "@google/genai": "^2.4.0",
     "@types/pg": "^8.23.1",
     "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.11.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",

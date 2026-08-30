@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
 import { 
   Package, 
-  Edit2, 
   Trash2, 
   Eye,
   Search,
-  Filter,
   RefreshCw
 } from 'lucide-react';
 import api from '../../services/api';
@@ -32,7 +30,20 @@ export default function VendorManageListingsPage() {
     try {
       setLoading(true);
       const response = await api.get('/vendor/listings');
-      setListings(Array.isArray(response.data) ? response.data : response.data.listings || []);
+      const raw = Array.isArray(response.data) ? response.data : response.data.listings || [];
+      // Normalize API snake_case rows to the shape the UI expects
+      const normalized = raw.map((l: any) => ({
+        id: l.id,
+        title: l.title,
+        category: l.category,
+        status: l.status,
+        price: { amountINR: Number(l.price_inr) || 0 },
+        images: Array.isArray(l.images) ? l.images : [],
+        maxGuests: l.max_guests || 1,
+        rating: l.rating || 0,
+        createdAt: l.created_at,
+      }));
+      setListings(normalized);
     } catch (err: any) {
       console.error('Failed to load listings');
     } finally {

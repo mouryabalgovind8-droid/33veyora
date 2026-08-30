@@ -18,7 +18,7 @@ const categories = [
 ];
 
 export default function SearchPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [listings, setListings] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -40,6 +40,20 @@ export default function SearchPage() {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
+
+  // URL change → filters sync (navbar Stays/Adventures/Workshops/Events links, Footer links)
+  // Note: useState ka initial value sirf pehli mount pe chalta hai — agar user /search page
+  // pe hi ho aur navbar se dusri category pe click kare, to ye effect URL ke hisab se
+  // filters (category, search, price) ko update karta hai.
+  useEffect(() => {
+    setFilters({
+      search: searchParams.get('search') || searchParams.get('location') || '',
+      category: searchParams.get('category') || 'all',
+      maxPrice: searchParams.get('maxPrice') || '',
+      city: searchParams.get('city') || searchParams.get('search') || searchParams.get('location') || '',
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
   
   useEffect(() => {
     fetchListings();
@@ -199,9 +213,19 @@ export default function SearchPage() {
                         alt={listing.title}
                         className="w-full h-full object-cover"
                       />
-                      <div className="absolute top-3 left-3 bg-white px-2 py-1 rounded-full text-xs font-medium">
+                      <div className={`absolute top-3 left-3 px-2 py-1 rounded-full text-xs font-medium ${listing.category === 'event' ? 'bg-rose-500 text-white font-semibold' : 'bg-white'}`}>
                         {listing.category}
                       </div>
+                      {listing.category === 'event' && listing.event_start && (
+                        <div className="absolute bottom-3 left-3 bg-white/95 backdrop-blur-sm px-2 py-1 rounded-full text-xs font-semibold text-rose-600">
+                          {new Date(listing.event_start).toLocaleString('en-IN', {
+                            day: 'numeric',
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </div>
+                      )}
                     </div>
                     <div className="p-4">
                       <div className="flex items-center gap-1 text-sm text-slate-500 mb-1">

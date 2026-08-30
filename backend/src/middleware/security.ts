@@ -77,12 +77,13 @@ export const securityHeaders = (req: Request, res: Response, next: NextFunction)
 // ============================================
 const sanitizeString = (str: string): string => {
   if (typeof str !== 'string') return str;
+  // Only angle brackets are entity-encoded (HTML safety for email templates).
+  // NOTE: quotes/apostrophes/slashes must stay raw — encoding them broke image
+  // URLs (&#x2F;) and added ';' entities that tripped the SQL detector. React
+  // escapes rendered output anyway, and all DB queries are parameterized.
   return str
     .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;');
+    .replace(/>/g, '&gt;');
 };
 
 const sanitizeObject = (obj: any): any => {
@@ -114,11 +115,25 @@ export const sanitizeInput = (req: Request, res: Response, next: NextFunction) =
 // 4. SQL INJECTION DETECTION
 // ============================================
 const sqlInjectionPatterns = [
-  /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|UNION|FETCH|DECLARE|TRUNCATE)\b)/i,
-  /(--|;|\/\*|\*\/|xp_|sp_)/i,
+  // Classic tautology: ' OR 1=1 --
   /(\b(OR|AND)\b\s+\d+\s*=\s*\d+)/i,
-  /(CHAR\(|CONCAT\(|0x[0-9a-f]+)/i,
+  // UNION-based extraction
+  /\bUNION\b(?:\s+ALL)?\s+\bSELECT\b/i,
+  // Stacked queries: '; DROP TABLE x
+  /;\s*(DROP|TRUNCATE|ALTER|CREATE|EXEC|EXECUTE|INSERT|UPDATE|DELETE)\b/i,
+  // Destructive statements
+  /\bDROP\s+(TABLE|DATABASE)\b/i,
+  // MSSQL stored-procedure signatures
+  /(xp_\w+|sp_executesql)/i,
+  // SQL block comments /* ... */
+  /\/\*[\s\S]*?\*\//,
+  // SQL function calls
+  /\b(CHAR|CONCAT|ASCII|SUBSTR|LOAD_FILE)\s*\(/i,
 ];
+// NOTE: bare ';' / '--' / standalone keywords (SELECT, UPDATE, CREATE...) were
+// removed — they false-positived on normal sentences and image URLs, blocking
+// legit listing creation ("Invalid input detected"). All DB access uses
+// parameterized queries, so these signatures are defense-in-depth only.
 
 export const detectSQLInjection = (req: Request, res: Response, next: NextFunction) => {
   const checkValue = (value: any): boolean => {

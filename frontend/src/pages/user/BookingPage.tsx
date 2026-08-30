@@ -52,6 +52,18 @@ export default function BookingPage() {
     fetchListing();
   }, [id]);
 
+  const today = new Date().toISOString().split('T')[0];
+
+  // Check-out hamesha check-in se KAM SE KAM 1 din aage hona chahiye
+  const getNextDay = (dateStr: string) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split('T')[0];
+  };
+
+  const minCheckOut = formData.checkInDate ? getNextDay(formData.checkInDate) : today;
+
   const nights = formData.checkInDate && formData.checkOutDate
     ? Math.max(1, Math.ceil((new Date(formData.checkOutDate).getTime() - new Date(formData.checkInDate).getTime()) / (1000 * 60 * 60 * 24)))
     : 0;
@@ -61,6 +73,10 @@ export default function BookingPage() {
   const handleSubmit = async () => {
     if (!formData.checkInDate || !formData.checkOutDate) {
       setError('Please select check-in and check-out dates');
+      return;
+    }
+    if (new Date(formData.checkOutDate) <= new Date(formData.checkInDate)) {
+      setError('Check-out date must be after check-in date');
       return;
     }
     try {
@@ -129,8 +145,20 @@ export default function BookingPage() {
                   <input
                     type="date"
                     value={formData.checkInDate}
-                    onChange={(e) => setFormData({ ...formData, checkInDate: e.target.value })}
-                    min={new Date().toISOString().split('T')[0]}
+                    onChange={(e) => {
+                      const checkIn = e.target.value;
+                      setFormData((prev) => ({
+                        ...prev,
+                        checkInDate: checkIn,
+                        // Check-out galat ho to auto-correct: check-in + 1 din
+                        checkOutDate:
+                          prev.checkOutDate && prev.checkOutDate > checkIn
+                            ? prev.checkOutDate
+                            : getNextDay(checkIn),
+                      }));
+                      setError('');
+                    }}
+                    min={today}
                     className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900"
                   />
                 </div>
@@ -139,8 +167,17 @@ export default function BookingPage() {
                   <input
                     type="date"
                     value={formData.checkOutDate}
-                    onChange={(e) => setFormData({ ...formData, checkOutDate: e.target.value })}
-                    min={formData.checkInDate || new Date().toISOString().split('T')[0]}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Check-out check-in se pehle/baarabar nahi ho sakta
+                      if (formData.checkInDate && value && value <= formData.checkInDate) {
+                        setError('Check-out date must be after check-in date');
+                        return;
+                      }
+                      setError('');
+                      setFormData({ ...formData, checkOutDate: value });
+                    }}
+                    min={minCheckOut}
                     className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900"
                   />
                 </div>

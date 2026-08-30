@@ -58,7 +58,7 @@ export default function ManageUsersPage() {
 
   const handleToggleStatus = async (userId: string, currentStatus: boolean) => {
     try {
-      await adminApi.updateUserStatus(userId, !currentStatus);
+      await adminApi.toggleUserStatus(userId);
       setUsers(users.map(u => 
         u.id === userId ? { ...u, isActive: !currentStatus } : u
       ));

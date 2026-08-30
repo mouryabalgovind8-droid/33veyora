@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Shield, 
   Upload, 
@@ -6,10 +6,10 @@ import {
   AlertCircle, 
   FileText, 
   Camera, 
-  ArrowRight,
   Clock,
   X
 } from 'lucide-react';
+import api from '../../services/api';
 
 type DocumentType = 'aadhar' | 'pan' | 'gst' | 'property_deed' | 'safety_cert';
 
@@ -31,6 +31,8 @@ const documentTypes: { type: DocumentType; label: string; description: string; r
 ];
 
 export default function VendorKYCPage() {
+  const [verificationStatus, setVerificationStatus] = useState<string>('pending');
+  const [businessName, setBusinessName] = useState<string>('');
   const [uploadedDocs, setUploadedDocs] = useState<UploadedDocument[]>([
     {
       id: '1',
@@ -51,7 +53,22 @@ export default function VendorKYCPage() {
   const [selectedType, setSelectedType] = useState<DocumentType | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  
+
+  // Load the vendor's live verification status from the backend
+  useEffect(() => {
+    api.get('/vendor/profile')
+      .then((res) => {
+        const p = res.data?.profile;
+        if (p) {
+          setVerificationStatus(p.verification_status || 'pending');
+          setBusinessName(p.business_name || '');
+        }
+      })
+      .catch(() => {
+        // Keep default 'pending' if the profile isn't reachable
+      });
+  }, []);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'approved': return 'bg-green-100 text-green-700';
@@ -105,6 +122,10 @@ export default function VendorKYCPage() {
     const uploaded = getDocByType(doc.type);
     return uploaded && uploaded.status === 'approved';
   });
+  // Live status from the backend (pending / verified / rejected)
+  const isVerified = verificationStatus === 'verified';
+  const isRejected = verificationStatus === 'rejected';
+  const bannerComplete = isVerified || (verificationStatus === 'pending' && allRequiredApproved);
   
   return (
     <div className="max-w-4xl mx-auto">
@@ -118,15 +139,19 @@ export default function VendorKYCPage() {
       
       {/* Status Banner */}
       <div className={`p-6 rounded-2xl mb-8 ${
-        allRequiredApproved 
-          ? 'bg-green-50 border border-green-200' 
+        isRejected
+          ? 'bg-red-50 border border-red-200'
+          : bannerComplete
+          ? 'bg-green-50 border border-green-200'
           : 'bg-amber-50 border border-amber-200'
       }`}>
         <div className="flex items-start gap-4">
           <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-            allRequiredApproved ? 'bg-green-100' : 'bg-amber-100'
+            isRejected ? 'bg-red-100' : bannerComplete ? 'bg-green-100' : 'bg-amber-100'
           }`}>
-            {allRequiredApproved ? (
+            {isRejected ? (
+              <AlertCircle className="h-6 w-6 text-red-600" />
+            ) : bannerComplete ? (
               <CheckCircle className="h-6 w-6 text-green-600" />
             ) : (
               <Shield className="h-6 w-6 text-amber-600" />
@@ -134,17 +159,24 @@ export default function VendorKYCPage() {
           </div>
           <div className="flex-1">
             <h3 className={`font-semibold ${
-              allRequiredApproved ? 'text-green-900' : 'text-amber-900'
+              isRejected ? 'text-red-900' : bannerComplete ? 'text-green-900' : 'text-amber-900'
             }`}>
-              {allRequiredApproved ? 'Verification Complete!' : 'Verification In Progress'}
+              {isRejected
+                ? 'Verification Rejected'
+                : isVerified
+                ? 'Verification Complete!'
+                : bannerComplete
+                ? 'Verification In Progress'
+                : 'Verification Pending'}
             </h3>
             <p className={`text-sm mt-1 ${
-              allRequiredApproved ? 'text-green-700' : 'text-amber-700'
+              isRejected ? 'text-red-700' : bannerComplete ? 'text-green-700' : 'text-amber-700'
             }`}>
-              {allRequiredApproved 
+              {isRejected
+                ? 'Your application was rejected. Please contact support or re-submit your documents.'
+                : isVerified
                 ? 'Your account is fully verified. You can now receive bookings.'
-                : `${approvedCount} of ${requiredDocs.length} required documents approved.`
-              }
+                : `${businessName ? `${businessName} — ` : ''}${approvedCount} of ${requiredDocs.length} required documents approved. Your host profile is awaiting admin review.`}
             </p>
           </div>
         </div>

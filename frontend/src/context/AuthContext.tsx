@@ -27,6 +27,7 @@ interface RegisterData {
   password: string;
   phone?: string;
   role?: string;
+  businessName?: string;
 }
 
 // Create context

@@ -17,8 +17,10 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Email templates directory
-const templatesDir = path.join(__dirname, '../templates/emails');
+// Email templates directory (works in dev "src/" and compiled "dist/" builds)
+const templatesDir = fs.existsSync(path.join(__dirname, '../templates/emails'))
+  ? path.join(__dirname, '../templates/emails')
+  : path.join(__dirname, '../../src/templates/emails');
 
 // Template variables interface
 interface TemplateVariables {

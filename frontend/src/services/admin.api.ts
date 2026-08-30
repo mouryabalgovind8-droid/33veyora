@@ -40,89 +40,74 @@ export interface Listing {
 }
 
 export const adminApi = {
-  // Dashboard
+  // Dashboard & analytics
   getDashboard: async () => {
     const response = await api.get('/admin/dashboard');
     return response.data;
   },
 
+  getStats: async () => {
+    const response = await api.get('/admin/stats');
+    return response.data;
+  },
+
   // Users
-  getUsers: async (page = 1, limit = 20) => {
-    const response = await api.get('/admin/users', { params: { page, limit } });
+  getUsers: async (params?: { role?: string; search?: string; page?: number; limit?: number }) => {
+    const response = await api.get('/admin/users', { params });
     return response.data;
   },
 
-  getUser: async (id: string) => {
-    const response = await api.get(`/admin/users/${id}`);
-    return response.data;
-  },
-
-  updateUserStatus: async (id: string, isActive: boolean) => {
-    const response = await api.put(`/admin/users/${id}/status`, { isActive });
+  toggleUserStatus: async (id: string) => {
+    const response = await api.post(`/admin/users/${id}/toggle-status`);
     return response.data;
   },
 
   // Vendors
-  getVendors: async (status?: string, page = 1, limit = 20) => {
-    const response = await api.get('/admin/vendors', { params: { status, page, limit } });
-    return response.data;
-  },
-
-  getVendor: async (id: string) => {
-    const response = await api.get(`/admin/vendors/${id}`);
+  getVendors: async (params?: { status?: string; search?: string; page?: number; limit?: number }) => {
+    const response = await api.get('/admin/vendors', { params });
     return response.data;
   },
 
   approveVendor: async (id: string) => {
-    const response = await api.put(`/admin/vendors/${id}/approve`);
+    const response = await api.post(`/admin/vendors/${id}/approve`);
     return response.data;
   },
 
   rejectVendor: async (id: string, reason: string) => {
-    const response = await api.put(`/admin/vendors/${id}/reject`, { reason });
+    const response = await api.post(`/admin/vendors/${id}/reject`, { reason });
     return response.data;
   },
 
   // Listings
-  getListings: async (status?: string, page = 1, limit = 20) => {
-    const response = await api.get('/admin/listings', { params: { status, page, limit } });
-    return response.data;
-  },
-
-  getListing: async (id: string) => {
-    const response = await api.get(`/admin/listings/${id}`);
+  getListings: async (params?: { status?: string; search?: string; page?: number; limit?: number }) => {
+    const response = await api.get('/admin/listings', { params });
     return response.data;
   },
 
   approveListing: async (id: string) => {
-    const response = await api.put(`/admin/listings/${id}/approve`);
+    const response = await api.post(`/admin/listings/${id}/approve`);
     return response.data;
   },
 
   rejectListing: async (id: string, reason: string) => {
-    const response = await api.put(`/admin/listings/${id}/reject`, { reason });
+    const response = await api.post(`/admin/listings/${id}/reject`, { reason });
     return response.data;
   },
 
-  // Bookings
-  getBookings: async (status?: string, page = 1, limit = 20) => {
-    const response = await api.get('/admin/bookings', { params: { status, page, limit } });
+  // Bookings (view + filter for admin)
+  getBookings: async (params?: { status?: string; page?: number; limit?: number }) => {
+    const response = await api.get('/admin/bookings', { params });
     return response.data;
   },
 
-  // Refunds
-  getRefunds: async (status?: string) => {
-    const response = await api.get('/admin/refunds', { params: { status } });
+  // Refunds — backend exposes a single process endpoint (approve | reject)
+  getRefunds: async () => {
+    const response = await api.get('/admin/refunds');
     return response.data;
   },
 
-  approveRefund: async (bookingId: string) => {
-    const response = await api.put(`/admin/refunds/${bookingId}/approve`);
-    return response.data;
-  },
-
-  rejectRefund: async (bookingId: string, reason: string) => {
-    const response = await api.put(`/admin/refunds/${bookingId}/reject`, { reason });
+  processRefund: async (id: string, action: 'approve' | 'reject') => {
+    const response = await api.post(`/admin/refunds/${id}/process`, { action });
     return response.data;
   },
 
@@ -133,18 +118,24 @@ export const adminApi = {
   },
 
   updateCommission: async (category: string, percentage: number) => {
-    const response = await api.put(`/admin/commissions/${category}`, { percentage });
+    const response = await api.put(`/admin/commissions/${encodeURIComponent(category)}`, { percentage });
     return response.data;
   },
 
-  // Reports
-  getRevenueReport: async (startDate?: string, endDate?: string) => {
-    const response = await api.get('/admin/reports/revenue', { params: { startDate, endDate } });
+  // Categories (system categories with live listing counts)
+  getCategories: async () => {
+    const response = await api.get('/admin/categories');
     return response.data;
   },
 
-  getBookingReport: async (startDate?: string, endDate?: string) => {
-    const response = await api.get('/admin/reports/bookings', { params: { startDate, endDate } });
+  // Review moderation
+  getReviews: async () => {
+    const response = await api.get('/admin/reviews');
+    return response.data;
+  },
+
+  moderateReview: async (id: string, action: 'approve' | 'reject') => {
+    const response = await api.post(`/admin/reviews/${id}/moderate`, { action });
     return response.data;
   },
 };

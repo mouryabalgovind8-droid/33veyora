@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, ArrowLeft, CheckCircle, KeyRound } from 'lucide-react';
 import api from '../../services/api';
+import BackButton from '../../components/common/BackButton';
 
 type Step = 'email' | 'otp' | 'reset' | 'success';
 
@@ -121,6 +122,8 @@ export default function ForgotPasswordPage() {
   
   return (
     <div className="min-h-screen flex">
+      {/* Back arrow — top-left corner */}
+      <BackButton className="fixed left-4 top-4 z-50" />
       {/* Left side - Form */}
       <div className="flex-1 flex items-center justify-center p-8 bg-white">
         <div className="w-full max-w-md">

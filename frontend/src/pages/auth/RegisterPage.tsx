@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Mail, Lock, User, Phone, Eye, EyeOff, ArrowRight, Home, Briefcase } from 'lucide-react';
+import BackButton from '../../components/common/BackButton';
 
 // Declare global types for Google and Facebook SDKs
 declare global {
@@ -45,13 +46,17 @@ function loadFacebookScript(): Promise<void> {
 }
 
 export default function RegisterPage() {
+  // ?role=vendor preselects the Host account type (used by "Become a Host" links)
+  const [searchParams] = useSearchParams();
+  const initialRole: 'user' | 'vendor' = searchParams.get('role') === 'vendor' ? 'vendor' : 'user';
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     password: '',
     confirmPassword: '',
-    role: 'user' as 'user' | 'vendor',
+    businessName: '',
+    role: initialRole,
   });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -83,6 +88,7 @@ export default function RegisterPage() {
         password: formData.password,
         phone: formData.phone || undefined,
         role: formData.role,
+        businessName: formData.role === 'vendor' ? formData.businessName : undefined,
       });
       // Redirect based on selected role
       if (userData.role === 'vendor') {
@@ -174,6 +180,8 @@ export default function RegisterPage() {
   
   return (
     <div className="min-h-screen flex">
+      {/* Back arrow — top-left corner */}
+      <BackButton className="fixed left-4 top-4 z-50" />
       {/* Left side - Form */}
       <div className="flex-1 flex items-center justify-center p-8 bg-white">
         <div className="w-full max-w-md">
@@ -334,6 +342,30 @@ export default function RegisterPage() {
               </div>
             </div>
             
+            {/* Business Name — vendors only */}
+            {formData.role === 'vendor' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Business / property name
+                </label>
+                <div className="relative">
+                  <Briefcase className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  <input
+                    type="text"
+                    name="businessName"
+                    value={formData.businessName}
+                    onChange={handleChange}
+                    className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-transparent focus:bg-white transition-all"
+                    placeholder="e.g., Himalayan Stays"
+                    required
+                  />
+                </div>
+                <p className="mt-1.5 text-xs text-slate-400">
+                  Your host profile starts as pending — an admin verifies it before your listings go live.
+                </p>
+              </div>
+            )}
+
             {/* Terms */}
             <div className="flex items-start gap-3">
               <input 

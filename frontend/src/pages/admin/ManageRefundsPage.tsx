@@ -32,7 +32,18 @@ export default function ManageRefundsPage() {
     try {
       setLoading(true);
       const data = await adminApi.getRefunds();
-      setRefunds(Array.isArray(data) ? data : data.refunds || []);
+      const raw = Array.isArray(data) ? data : data.refunds || [];
+      // Map booking rows (snake_case) to the refund shape used by the UI
+      setRefunds(raw.map((r: any) => ({
+        id: r.id,
+        bookingId: r.id,
+        amount: r.refund_amount || 0,
+        reason: r.cancellation_reason || 'Not specified',
+        status: r.refund_status || 'pending',
+        createdAt: r.updated_at || r.created_at || new Date().toISOString(),
+        user: { name: r.guest_name || 'Guest', email: '' },
+        listing: { title: r.listing_title || 'N/A' },
+      })));
       setError('');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load refunds');
@@ -47,25 +58,24 @@ export default function ManageRefundsPage() {
 
   const handleApprove = async (bookingId: string) => {
     try {
-      await adminApi.approveRefund(bookingId);
+      await adminApi.processRefund(bookingId, 'approve');
       setRefunds(refunds.map(r => 
         r.bookingId === bookingId ? { ...r, status: 'approved' } : r
       ));
     } catch (err: any) {
-      alert('Failed to approve refund');
+      alert(err.response?.data?.error || 'Failed to approve refund');
     }
   };
 
   const handleReject = async (bookingId: string) => {
-    const reason = prompt('Enter rejection reason:');
-    if (!reason) return;
+    if (!confirm('Reject this refund request?')) return;
     try {
-      await adminApi.rejectRefund(bookingId, reason);
+      await adminApi.processRefund(bookingId, 'reject');
       setRefunds(refunds.map(r => 
         r.bookingId === bookingId ? { ...r, status: 'rejected' } : r
       ));
     } catch (err: any) {
-      alert('Failed to reject refund');
+      alert(err.response?.data?.error || 'Failed to reject refund');
     }
   };
 

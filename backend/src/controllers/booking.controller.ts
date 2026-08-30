@@ -48,6 +48,20 @@ export const createBooking = async (req: Request, res: Response) => {
     if (!guestsCount || guestsCount < 1 || guestsCount > 50) {
       return res.status(400).json({ error: 'Invalid guest count (1-50)' });
     }
+
+    // SECURITY: Enforce event participant capacity (pre-booking limit)
+    if (listing.max_participants) {
+      const bookedResult = await pool.query(
+        `SELECT COALESCE(SUM(guests_count), 0) as booked FROM bookings
+         WHERE listing_id = $1 AND status IN ('pending', 'confirmed')`,
+        [listingId]
+      );
+      const alreadyBooked = parseInt(bookedResult.rows[0]?.booked || '0', 10);
+      if (alreadyBooked + guestsCount > listing.max_participants) {
+        const spotsLeft = Math.max(0, listing.max_participants - alreadyBooked);
+        return res.status(400).json({ error: `Event capacity reached — only ${spotsLeft} spot(s) left` });
+      }
+    }
     
     const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -374,6 +388,7 @@ export const getVendorBookings = async (req: Request, res: Response) => {
 
     const result = await pool.query(`
       SELECT b.*, l.title as listing_title, l.images as listing_images,
+             l.location_city as listing_city, l.location_state as listing_state,
              u.name as guest_name, u.email as guest_email, u.phone as guest_phone
       FROM bookings b
       JOIN listings l ON b.listing_id = l.id

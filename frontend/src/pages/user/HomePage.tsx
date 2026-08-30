@@ -1,7 +1,11 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Star, Heart, ArrowRight, ChevronRight, MapPin } from 'lucide-react';
+import { Star, ArrowRight, ChevronRight, MapPin, CalendarClock } from 'lucide-react';
+import api from '../../services/api';
 import SearchBar from '../../components/common/SearchBar';
 import { StaysIcon, AdventuresIcon, WorkshopsIcon, EventsIcon, IconBackground } from '../../components/common/IllustratedIcons';
+import EventCard, { EventListing, getEventStatus } from '../../components/common/EventCard';
+import EventPreBookModal from '../../components/common/EventPreBookModal';
 
 const categories = [
   { 
@@ -78,126 +82,6 @@ const categories = [
   },
 ];
 
-const trendingListings = [
-  {
-    id: '1',
-    title: 'The Whispering Pines Glass Chalet',
-    location: 'Shimla, Himachal Pradesh',
-    price: 10830,
-    rating: 5.0,
-    reviews: 128,
-    image: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=800&q=80',
-    badge: 'Guest favourite',
-    amenities: ['WiFi', 'Mountain view', 'Fireplace'],
-  },
-  {
-    id: '2',
-    title: 'White-Water Rafting Adventure',
-    location: 'Rishikesh, Uttarakhand',
-    price: 2508,
-    rating: 4.8,
-    reviews: 256,
-    image: 'https://images.unsplash.com/photo-1530866495561-507c9faab2ed?auto=format&fit=crop&w=800&q=80',
-    badge: 'Top rated',
-    amenities: ['Guide included', 'Equipment', 'Safety gear'],
-  },
-  {
-    id: '3',
-    title: 'Terracotta Pottery Workshop',
-    location: 'Jaipur, Rajasthan',
-    price: 1500,
-    rating: 4.9,
-    reviews: 89,
-    image: 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?auto=format&fit=crop&w=800&q=80',
-    badge: 'New',
-    amenities: ['Materials included', 'Take home', 'Expert guidance'],
-  },
-  {
-    id: '4',
-    title: 'Luxury Villa in Goa',
-    location: 'Goa, India',
-    price: 8500,
-    rating: 4.9,
-    reviews: 312,
-    image: 'https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?auto=format&fit=crop&w=800&q=80',
-    badge: 'Superhost',
-    amenities: ['Pool', 'Beach access', 'Private'],
-  },
-];
-
-const featuredStays = [
-  {
-    id: '5',
-    title: 'Heritage Haveli in Udaipur',
-    location: 'Udaipur, Rajasthan',
-    price: 12000,
-    rating: 4.7,
-    reviews: 178,
-    image: 'https://images.unsplash.com/photo-1564501049412-61c2a3083791?auto=format&fit=crop&w=800&q=80',
-    amenities: ['Lake view', 'Heritage', 'Rooftop'],
-  },
-  {
-    id: '6',
-    title: 'Beachside Cottage in Kerala',
-    location: 'Alleppey, Kerala',
-    price: 6500,
-    rating: 4.8,
-    reviews: 234,
-    image: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=800&q=80',
-    amenities: ['Beachfront', 'Kayak', 'Sunset views'],
-  },
-  {
-    id: '7',
-    title: 'Mountain View Cabin',
-    location: 'Manali, Himachal Pradesh',
-    price: 5500,
-    rating: 4.6,
-    reviews: 145,
-    image: 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?auto=format&fit=crop&w=800&q=80',
-    amenities: ['Valley view', 'Bonfire', 'Trekking'],
-  },
-  {
-    id: '8',
-    title: 'Royal Palace Suite',
-    location: 'Jodhpur, Rajasthan',
-    price: 15000,
-    rating: 4.9,
-    reviews: 89,
-    image: 'https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?auto=format&fit=crop&w=800&q=80',
-    amenities: ['Heritage', 'Pool', 'Spa'],
-  },
-];
-
-const experiences = [
-  {
-    id: '9',
-    title: 'Sunrise Yoga in Rishikesh',
-    location: 'Rishikesh, Uttarakhand',
-    price: 800,
-    rating: 4.9,
-    image: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=800&q=80',
-    duration: '2 hours',
-  },
-  {
-    id: '10',
-    title: 'Street Food Tour in Delhi',
-    location: 'New Delhi, India',
-    price: 1200,
-    rating: 4.7,
-    image: 'https://images.unsplash.com/photo-1567337710282-00832b415979?auto=format&fit=crop&w=800&q=80',
-    duration: '4 hours',
-  },
-  {
-    id: '11',
-    title: 'Photography Walk in Mumbai',
-    location: 'Mumbai, Maharashtra',
-    price: 1500,
-    rating: 4.8,
-    image: 'https://images.unsplash.com/photo-1570168007204-dfb528c6958f?auto=format&fit=crop&w=800&q=80',
-    duration: '3 hours',
-  },
-];
-
 const destinations = [
   {
     id: '1',
@@ -225,7 +109,129 @@ const destinations = [
   },
 ];
 
+interface HomeListing {
+  id: string;
+  title: string;
+  category?: string;
+  images?: string[];
+  location_city?: string;
+  location_state?: string;
+  price_inr?: number;
+  price_unit?: string;
+  rating?: number;
+  review_count?: number;
+  is_featured?: number;
+  tagline?: string;
+  event_start?: string | null;
+  event_end?: string | null;
+}
+
+const STAY_CATEGORIES = ['hotel', 'resort', 'villa', 'homestay', 'hostel', 'camp', 'apartment', 'guesthouse', 'cottage', 'private_room', 'luxury'];
+
+function HomeListingCard({ listing }: { listing: HomeListing }) {
+  const image = listing.images?.[0];
+  const priceUnit = listing.price_unit || (STAY_CATEGORIES.includes(listing.category || '') ? 'night' : 'person');
+  return (
+    <Link
+      to={`/listing/${listing.id}`}
+      className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300"
+    >
+      <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
+        {image ? (
+          <img
+            src={image}
+            alt={listing.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-slate-300">
+            <MapPin className="h-10 w-10" />
+          </div>
+        )}
+        {listing.category && (
+          <div className="absolute top-3 left-3">
+            <span className="px-2.5 py-1 bg-white/95 backdrop-blur-sm text-xs font-medium rounded-full capitalize">
+              {listing.category}
+            </span>
+          </div>
+        )}
+        <div className="absolute bottom-3 left-3 flex items-center gap-1 px-2 py-1 bg-white/95 backdrop-blur-sm rounded-full">
+          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+          <span className="text-sm font-medium">{listing.rating ? listing.rating.toFixed(1) : 'New'}</span>
+          {listing.review_count ? <span className="text-xs text-slate-500">({listing.review_count})</span> : null}
+        </div>
+      </div>
+      <div className="p-4">
+        <div className="flex items-center gap-1 text-sm text-slate-500 mb-1">
+          <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+          <span className="truncate">
+            {listing.location_city || 'India'}
+            {listing.location_state ? `, ${listing.location_state}` : ''}
+          </span>
+        </div>
+        <h3 className="font-semibold text-slate-900 mb-1 group-hover:text-indigo-600 transition-colors line-clamp-1">
+          {listing.title}
+        </h3>
+        {listing.tagline && <p className="text-xs text-slate-500 line-clamp-1 mb-2">{listing.tagline}</p>}
+        <div className="flex items-baseline gap-1">
+          <span className="text-lg font-bold text-slate-900">₹{(listing.price_inr || 0).toLocaleString()}</span>
+          <span className="text-sm text-slate-500">/ {priceUnit}</span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 export default function HomePage() {
+  const [apiListings, setApiListings] = useState<HomeListing[] | null>(null);
+  const [isLoadingListings, setIsLoadingListings] = useState(true);
+  const [selectedEvent, setSelectedEvent] = useState<EventListing | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchListings = async () => {
+      try {
+        const response = await api.get('/listings', { params: { limit: 24 } });
+        const rows = response.data?.listings;
+        if (!cancelled && Array.isArray(rows)) setApiListings(rows);
+      } catch (err) {
+        console.error('Failed to load listings for home page:', err);
+      } finally {
+        if (!cancelled) setIsLoadingListings(false);
+      }
+    };
+    fetchListings();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const allListings = apiListings || [];
+
+  // EVENTS FIRST — upcoming & live events, sorted by soonest start date
+  const upcomingEvents = allListings
+    .filter(
+      (l) =>
+        l.category === 'event' &&
+        l.event_start &&
+        l.event_end &&
+        getEventStatus(l.event_start, l.event_end) !== 'ended'
+    )
+    .sort((a, b) => new Date(a.event_start!).getTime() - new Date(b.event_start!).getTime());
+
+  const normalListings = allListings.filter((l) => l.category !== 'event');
+  const displayListings = normalListings;
+
+  // FEATURED — host-marked featured stays straight from the database
+  const featuredListings = allListings
+    .filter((l) => l.is_featured === 1 && l.category !== 'event')
+    .slice(0, 4);
+
+  // EXPERIENCES — adventures & workshops straight from the database
+  const experienceListings = allListings
+    .filter((l) => l.category === 'adventure' || l.category === 'workshop')
+    .slice(0, 3);
+
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
@@ -312,58 +318,42 @@ export default function HomePage() {
             </Link>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {trendingListings.map((listing) => (
-              <Link
-                key={listing.id}
-                to={`/listing/${listing.id}`}
-                className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300"
-              >
-                <div className="relative aspect-[4/3] overflow-hidden">
-                  <img
-                    src={listing.image}
-                    alt={listing.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <button className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors">
-                    <Heart className="h-4 w-4 text-slate-700" />
-                  </button>
-                  {listing.badge && (
-                    <div className="absolute top-3 left-3">
-                      <span className="px-2.5 py-1 bg-white/95 backdrop-blur-sm text-xs font-medium rounded-full">
-                        {listing.badge}
-                      </span>
-                    </div>
-                  )}
-                  <div className="absolute bottom-3 left-3 flex items-center gap-1 px-2 py-1 bg-white/95 backdrop-blur-sm rounded-full">
-                    <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                    <span className="text-sm font-medium">{listing.rating}</span>
-                    <span className="text-xs text-slate-500">({listing.reviews})</span>
+          {isLoadingListings ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+            </div>
+          ) : (
+            <>
+              {/* EVENTS FIRST — live & upcoming events with countdown + pre-booking */}
+              {upcomingEvents.length > 0 && (
+                <div className="mb-10">
+                  <div className="flex items-center gap-2 mb-4 flex-wrap">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100 text-rose-700 text-xs font-bold">
+                      <CalendarClock className="h-3.5 w-3.5" />
+                      Live &amp; upcoming events
+                    </span>
+                    <span className="text-xs text-slate-400">Pre-book your spot before they sell out</span>
                   </div>
-                </div>
-                <div className="p-4">
-                  <div className="flex items-center gap-1 text-sm text-slate-500 mb-1">
-                    <MapPin className="h-3.5 w-3.5" />
-                    {listing.location}
-                  </div>
-                  <h3 className="font-semibold text-slate-900 mb-2 group-hover:text-indigo-600 transition-colors line-clamp-1">
-                    {listing.title}
-                  </h3>
-                  <div className="flex items-center gap-1 mb-3">
-                    {listing.amenities.slice(0, 2).map((amenity, idx) => (
-                      <span key={idx} className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-                        {amenity}
-                      </span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {upcomingEvents.map((ev) => (
+                      <EventCard key={ev.id} event={ev} onPreBook={setSelectedEvent} />
                     ))}
                   </div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-lg font-bold text-slate-900">₹{listing.price.toLocaleString()}</span>
-                    <span className="text-sm text-slate-500">/ night</span>
-                  </div>
                 </div>
-              </Link>
-            ))}
-          </div>
+              )}
+
+              {/* Normal listings — shown after events */}
+              {displayListings.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {displayListings.map((listing) => (
+                    <HomeListingCard key={listing.id} listing={listing} />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-slate-500 text-sm">No listings yet — check back soon!</p>
+              )}
+            </>
+          )}
         </div>
       </section>
 
@@ -380,50 +370,19 @@ export default function HomePage() {
             </Link>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredStays.map((listing) => (
-              <Link
-                key={listing.id}
-                to={`/listing/${listing.id}`}
-                className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300"
-              >
-                <div className="relative aspect-[4/3] overflow-hidden">
-                  <img
-                    src={listing.image}
-                    alt={listing.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <button className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors">
-                    <Heart className="h-4 w-4 text-slate-700" />
-                  </button>
-                  <div className="absolute bottom-3 left-3 flex items-center gap-1 px-2 py-1 bg-white/95 backdrop-blur-sm rounded-full">
-                    <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                    <span className="text-sm font-medium">{listing.rating}</span>
-                  </div>
-                </div>
-                <div className="p-4">
-                  <div className="flex items-center gap-1 text-sm text-slate-500 mb-1">
-                    <MapPin className="h-3.5 w-3.5" />
-                    {listing.location}
-                  </div>
-                  <h3 className="font-semibold text-slate-900 mb-2 group-hover:text-indigo-600 transition-colors line-clamp-1">
-                    {listing.title}
-                  </h3>
-                  <div className="flex items-center gap-1 mb-3">
-                    {listing.amenities.slice(0, 2).map((amenity, idx) => (
-                      <span key={idx} className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-                        {amenity}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-lg font-bold text-slate-900">₹{listing.price.toLocaleString()}</span>
-                    <span className="text-sm text-slate-500">/ night</span>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+          {isLoadingListings ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+            </div>
+          ) : featuredListings.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {featuredListings.map((listing) => (
+                <HomeListingCard key={listing.id} listing={listing} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-slate-500 text-sm">No featured stays yet — check back soon!</p>
+          )}
         </div>
       </section>
 
@@ -440,48 +399,19 @@ export default function HomePage() {
             </Link>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {experiences.map((exp) => (
-              <Link
-                key={exp.id}
-                to={`/listing/${exp.id}`}
-                className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300"
-              >
-                <div className="relative aspect-[16/10] overflow-hidden">
-                  <img
-                    src={exp.image}
-                    alt={exp.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <button className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors">
-                    <Heart className="h-4 w-4 text-slate-700" />
-                  </button>
-                  <div className="absolute bottom-3 left-3 flex items-center gap-2">
-                    <span className="px-2.5 py-1 bg-white/95 backdrop-blur-sm text-xs font-medium rounded-full">
-                      {exp.duration}
-                    </span>
-                    <div className="flex items-center gap-1 px-2 py-1 bg-white/95 backdrop-blur-sm rounded-full">
-                      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                      <span className="text-sm font-medium">{exp.rating}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-4">
-                  <div className="flex items-center gap-1 text-sm text-slate-500 mb-1">
-                    <MapPin className="h-3.5 w-3.5" />
-                    {exp.location}
-                  </div>
-                  <h3 className="font-semibold text-slate-900 mb-2 group-hover:text-indigo-600 transition-colors">
-                    {exp.title}
-                  </h3>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-lg font-bold text-slate-900">₹{exp.price.toLocaleString()}</span>
-                    <span className="text-sm text-slate-500">/ person</span>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+          {isLoadingListings ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+            </div>
+          ) : experienceListings.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {experienceListings.map((listing) => (
+                <HomeListingCard key={listing.id} listing={listing} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-slate-500 text-sm">No experiences yet — check back soon!</p>
+          )}
         </div>
       </section>
 
@@ -530,7 +460,7 @@ export default function HomePage() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link
-                  to="/register"
+                  to="/register?role=vendor"
                   className="inline-flex items-center justify-center gap-2 bg-white text-slate-900 px-6 py-3 rounded-xl font-medium hover:bg-slate-100 transition-colors"
                 >
                   Start hosting
@@ -565,6 +495,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Event pre-booking modal */}
+      <EventPreBookModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />
     </div>
   );
 }

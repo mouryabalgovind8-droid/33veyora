@@ -1,25 +1,63 @@
-<<<<<<< HEAD
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# 33veyora (Haven Horizon)
 
-# Run and deploy your AI Studio app
+Accommodation & Experiences Discovery & Booking Platform.
 
-This contains everything you need to run your app locally.
+- **Frontend:** React 19 + TypeScript + Vite + Tailwind CSS 4 → `frontend/`
+- **Backend:** Node.js + Express + TypeScript (JWT auth, Nodemailer, Gemini AI) → `backend/`
+- **Database:** PostgreSQL (SQL migrations & seeds) → `database/`
 
-View your app in AI Studio: https://ai.studio/apps/e8d85e95-2b1d-4f60-9292-b2d6e033da4e
+## Project Structure
 
-## Run Locally
+```
+├── frontend/        # React app (pages, components, services)
+├── backend/         # Express API (routes, controllers, services)
+│   └── src/
+│       ├── server.ts        # Entry point
+│       ├── routes/          # API endpoints
+│       ├── controllers/     # Request handlers
+│       ├── services/        # Business logic
+│       ├── middleware/      # Auth, security, error handling
+│       └── config/          # DB & env config
+├── database/
+│   ├── migrations/  # 001_initial.sql, 002..., 003...
+│   └── seeds/       # Initial data
+├── uploads/         # Vendor/user file uploads (served at /uploads)
+└── Dockerfile       # Backend production image
+```
 
-**Prerequisites:**  Node.js
+## Quick Start (Development)
 
+```bash
+npm install              # root (concurrently)
+cd frontend && npm install && cd ..
+cd backend && npm install && cd ..
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
-=======
-# 33veyora
-a hotel stay adventure and travelling website
->>>>>>> c6b3616e6bd51bc5436676047fce0f1d33a28d14
+npm run dev              # backend on :3001 + frontend on :5173
+```
+
+Copy `.env.example` → `.env` (root), `backend/.env`, `frontend/.env` and fill values.
+
+## Database Setup
+
+```bash
+npm run db:migrate       # runs database/migrations/*.sql
+npm run db:seed          # runs database/seeds/*.sql
+```
+
+## Production
+
+```bash
+npm run build            # builds frontend (vite) + backend (tsc)
+npm start                # serves backend dist on :3001
+```
+
+Or with Docker: `docker build -t 33veyora-backend .`
+
+## Useful Scripts (root package.json)
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Frontend + backend together (concurrently) |
+| `npm run build` | Build both apps |
+| `npm run lint` | Type-check both apps |
+| `npm run db:migrate` / `db:seed` | Setup PostgreSQL schema/data |

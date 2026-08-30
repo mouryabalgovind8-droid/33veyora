@@ -1,17 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Calendar, 
   User, 
   MapPin, 
   CheckCircle, 
   XCircle, 
-  Clock, 
   Eye,
   Filter,
   Search
 } from 'lucide-react';
+import api from '../../services/api';
 
-type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled';
+type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'refunded';
 
 interface Booking {
   id: string;
@@ -27,72 +27,62 @@ interface Booking {
   createdAt: Date;
 }
 
-const mockBookings: Booking[] = [
-  {
-    id: 'BK001',
-    guestName: 'Priya Sharma',
-    guestEmail: 'priya@email.com',
-    listingName: 'Luxury Villa in Goa',
-    listingLocation: 'Goa, India',
-    checkIn: new Date('2024-02-15'),
-    checkOut: new Date('2024-02-18'),
-    guests: 4,
-    totalAmount: 25500,
-    status: 'pending',
-    createdAt: new Date('2024-02-10'),
-  },
-  {
-    id: 'BK002',
-    guestName: 'Rahul Verma',
-    guestEmail: 'rahul@email.com',
-    listingName: 'Mountain View Cabin',
-    listingLocation: 'Manali, India',
-    checkIn: new Date('2024-02-20'),
-    checkOut: new Date('2024-02-22'),
-    guests: 2,
-    totalAmount: 8000,
-    status: 'confirmed',
-    createdAt: new Date('2024-02-12'),
-  },
-  {
-    id: 'BK003',
-    guestName: 'Ananya Patel',
-    guestEmail: 'ananya@email.com',
-    listingName: 'Heritage Haveli Stay',
-    listingLocation: 'Jaipur, India',
-    checkIn: new Date('2024-01-25'),
-    checkOut: new Date('2024-01-28'),
-    guests: 3,
-    totalAmount: 15000,
-    status: 'completed',
-    createdAt: new Date('2024-01-20'),
-  },
-];
-
 export default function VendorBookingsPage() {
-  const [bookings, setBookings] = useState<Booking[]>(mockBookings);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | BookingStatus>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  
+
+  const fetchBookings = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/vendor/bookings');
+      const rows = Array.isArray(response.data) ? response.data : response.data.bookings || [];
+      const normalized = rows.map((b: any) => ({
+        id: b.id,
+        guestName: b.guest_name || 'Guest',
+        guestEmail: b.guest_email || '',
+        listingName: b.listing_title || 'Listing',
+        listingLocation: [b.listing_city, b.listing_state].filter(Boolean).join(', '),
+        checkIn: new Date(b.check_in_date || b.created_at),
+        checkOut: new Date(b.check_out_date || b.created_at),
+        guests: b.guests_count || 1,
+        totalAmount: Number(b.total_amount_inr) || 0,
+        status: (b.status || 'pending') as BookingStatus,
+        createdAt: new Date(b.created_at),
+      }));
+      setBookings(normalized);
+    } catch (err: any) {
+      console.error('Failed to load bookings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBookings();
+  }, []);
+
+  const respond = async (bookingId: string, action: 'accept' | 'reject') => {
+    try {
+      await api.post(`/bookings/${bookingId}/respond`, { action });
+      setBookings(bookings.map(b =>
+        b.id === bookingId
+          ? { ...b, status: (action === 'accept' ? 'confirmed' : 'cancelled') as BookingStatus }
+          : b
+      ));
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to update booking');
+    }
+  };
+
   const filteredBookings = bookings.filter(booking => {
     const matchesFilter = filter === 'all' || booking.status === filter;
-    const matchesSearch = 
+    const matchesSearch =
       booking.guestName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       booking.listingName.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
   });
-  
-  const handleAccept = (bookingId: string) => {
-    setBookings(bookings.map(b => 
-      b.id === bookingId ? { ...b, status: 'confirmed' as BookingStatus } : b
-    ));
-  };
-  
-  const handleReject = (bookingId: string) => {
-    setBookings(bookings.map(b => 
-      b.id === bookingId ? { ...b, status: 'cancelled' as BookingStatus } : b
-    ));
-  };
   
   const getStatusColor = (status: BookingStatus) => {
     switch (status) {
@@ -113,7 +103,15 @@ export default function VendorBookingsPage() {
   };
   
   const pendingCount = bookings.filter(b => b.status === 'pending').length;
-  
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900"></div>
+      </div>
+    );
+  }
+
   return (
     <div>
       {/* Header */}
@@ -234,14 +232,14 @@ export default function VendorBookingsPage() {
               {booking.status === 'pending' ? (
                 <>
                   <button
-                    onClick={() => handleAccept(booking.id)}
+                    onClick={() => respond(booking.id, 'accept')}
                     className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors"
                   >
                     <CheckCircle className="h-4 w-4" />
                     Accept
                   </button>
                   <button
-                    onClick={() => handleReject(booking.id)}
+                    onClick={() => respond(booking.id, 'reject')}
                     className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
                   >
                     <XCircle className="h-4 w-4" />
