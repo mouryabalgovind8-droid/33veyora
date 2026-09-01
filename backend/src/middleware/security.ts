@@ -176,7 +176,7 @@ export const corsConfig = {
       'http://localhost:5173',
       'http://localhost:5174',
       'http://localhost:5175',
-      'https://frontend-gamma-bay-24.vercel.app',
+      'https://33veyora-3lfcn7yjh-govinds-projects-41cd6a14.vercel.app',
     ].filter(Boolean);
     if (!origin || allowed.includes(origin)) {
       callback(null, true);
