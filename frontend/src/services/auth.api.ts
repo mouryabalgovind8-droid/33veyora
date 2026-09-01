@@ -6,10 +6,11 @@ export interface LoginData {
 }
 
 export interface OAuthData {
-  provider: 'google' | 'facebook';
+  provider: 'google';
   email: string;
   name: string;
   avatar?: string;
+  credential?: string;
 }
 
 export interface RegisterData {

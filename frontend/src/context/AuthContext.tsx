@@ -16,7 +16,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<User>;
   register: (data: RegisterData) => Promise<User>;
-  oauthLogin: (provider: 'google' | 'facebook', userData: { email: string; name: string; avatar?: string }) => Promise<void>;
+  oauthLogin: (provider: 'google', userData: { email: string; name: string; avatar?: string; credential?: string }) => Promise<void>;
   logout: () => void;
   updateUser: (data: Partial<User>) => void;
 }
@@ -114,13 +114,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // OAuth login function
-  const oauthLogin = async (provider: 'google' | 'facebook', userData: { email: string; name: string; avatar?: string }) => {
+  const oauthLogin = async (provider: 'google', userData: { email: string; name: string; avatar?: string; credential?: string }) => {
     const { authApi } = await import('../services/auth.api');
     const response = await authApi.oauthLogin({
       provider,
       email: userData.email,
       name: userData.name,
       avatar: userData.avatar,
+      credential: userData.credential,
     });
     const { user: authUser, token: authToken } = response;
     localStorage.setItem('token', authToken);

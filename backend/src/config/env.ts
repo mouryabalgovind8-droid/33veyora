@@ -20,6 +20,9 @@ export const env = {
   BACKEND_PORT: parseInt(process.env.BACKEND_PORT || '3001'),
   FRONTEND_PORT: parseInt(process.env.FRONTEND_PORT || '5173'),
   FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
+  // Google OAuth (used to verify Google ID tokens server-side)
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
+
   
   // Email
   SMTP_HOST: process.env.SMTP_HOST,

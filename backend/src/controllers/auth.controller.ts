@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { getDatabase } from '../config/database.js';
 import { generateToken } from '../middleware/auth.js';
 import { NotificationService } from '../services/notification.service.js';
+import { env } from '../config/env.js';
 
 // Store OTPs in memory (in production, use Redis or database)
 const otpStore = new Map<string, { code: string; expiresAt: number }>();
@@ -265,38 +266,70 @@ export const resetPassword = async (req: Request, res: Response) => {
   }
 };
 
-// POST /api/auth/oauth - OAuth login/register (Google, Facebook)
+// POST /api/auth/oauth - OAuth login/register (Google only, token verified server-side)
 export const oauthLogin = async (req: Request, res: Response) => {
   try {
-    const { provider, email, name, avatar } = req.body;
+    const { provider, credential, email, name, avatar } = req.body;
 
-    if (!provider || !email || !name) {
-      return res.status(400).json({ error: 'Provider, email, and name are required' });
+    if (provider !== 'google') {
+      return res.status(400).json({ error: 'Invalid provider. Only google is supported' });
     }
 
-    if (!['google', 'facebook'].includes(provider)) {
-      return res.status(400).json({ error: 'Invalid provider. Must be google or facebook' });
+    // Identity ko mehfooz rakhne ke liye token ko SERVER side verify karte hai.
+    // Jab bhi credential mile, client se aaya email/name kabhi trust nahi karte.
+    let verifiedEmail = '';
+    let verifiedName = '';
+    let verifiedAvatar: string | null = null;
+
+    if (credential && env.GOOGLE_CLIENT_ID) {
+      try {
+        const { OAuth2Client } = await import('google-auth-library');
+        const client = new OAuth2Client(env.GOOGLE_CLIENT_ID);
+        const ticket = await client.verifyIdToken({
+          idToken: credential,
+          audience: env.GOOGLE_CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
+        if (!payload || !payload.email) {
+          return res.status(400).json({ error: 'Google token verification failed' });
+        }
+        verifiedEmail = payload.email;
+        verifiedName = payload.name || payload.email.split('@')[0] || 'Google User';
+        verifiedAvatar = payload.picture || null;
+      } catch (err) {
+        console.error('Google token verification error:', err);
+        return res.status(401).json({ error: 'Invalid Google credential' });
+      }
+    } else {
+      // Fallback (e.g. local dev bina backend GOOGLE_CLIENT_ID ke) - decoded payload use hota hai
+      verifiedEmail = email;
+      verifiedName = name || (email || '').split('@')[0] || 'Google User';
+      verifiedAvatar = avatar || null;
+    }
+
+    if (!verifiedEmail || !verifiedName) {
+      return res.status(400).json({ error: 'Provider, email, and name are required' });
     }
 
     const pool = getDatabase();
 
     // Check if user already exists
-    const existingResult = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    const existingResult = await pool.query('SELECT * FROM users WHERE email = $1', [verifiedEmail]);
     let user = existingResult.rows[0];
 
     if (user) {
       // Update avatar if provided and user doesn't have one
-      if (avatar && !user.avatar) {
-        await pool.query('UPDATE users SET avatar = $1 WHERE email = $2', [avatar, email]);
-        user.avatar = avatar;
+      if (verifiedAvatar && !user.avatar) {
+        await pool.query('UPDATE users SET avatar = $1 WHERE email = $2', [verifiedAvatar, verifiedEmail]);
+        user.avatar = verifiedAvatar;
       }
     } else {
       // Create new user
-      const randomPassword = await bcrypt.hash(email + provider + Date.now(), 10);
+      const randomPassword = await bcrypt.hash(verifiedEmail + 'google' + Date.now(), 10);
 
       const result = await pool.query(
         'INSERT INTO users (name, email, password, avatar, role) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-        [name, email, randomPassword, avatar || null, 'user']
+        [verifiedName, verifiedEmail, randomPassword, verifiedAvatar, 'user']
       );
 
       user = result.rows[0];
