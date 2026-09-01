@@ -61,4 +61,3 @@ Or with Docker: `docker build -t 33veyora-backend .`
 | `npm run build` | Build both apps |
 | `npm run lint` | Type-check both apps |
 | `npm run db:migrate` / `db:seed` | Setup PostgreSQL schema/data |
-

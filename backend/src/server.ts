@@ -22,7 +22,8 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 dotenv.config();
 
 const app = express();
-const PORT = process.env.BACKEND_PORT || 3001;
+// Railway/Render inject PORT at runtime; BACKEND_PORT is for local .env
+const PORT = process.env.PORT || process.env.BACKEND_PORT || 3001;
 
 // ============================================
 // SECURITY MIDDLEWARE (applied globally)
