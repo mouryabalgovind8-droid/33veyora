@@ -1,5 +1,6 @@
 // Writes backend/src/generated/build-info.ts with the current git commit + branch.
 // Runs before tsc so the build embeds the exact source commit that produced dist/.
+// Prefer Railway/Vercel build-provided env vars; fall back to local git.
 const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -12,9 +13,14 @@ function gitSafe(command) {
   }
 }
 
-const commit = gitSafe('git rev-parse --short HEAD');
-const fullCommit = gitSafe('git rev-parse HEAD');
-const branch = gitSafe('git rev-parse --abbrev-ref HEAD');
+const commit = process.env.RAILWAY_GIT_COMMIT_SHA
+  || process.env.SOURCE_VERSION
+  || process.env.VERCEL_GIT_COMMIT_SHA
+  || gitSafe('git rev-parse --short HEAD');
+const fullCommit = commit && commit.length >= 40 ? commit : gitSafe('git rev-parse HEAD');
+const branch = process.env.RAILWAY_GIT_BRANCH
+  || process.env.VERCEL_GIT_COMMIT_REF
+  || gitSafe('git rev-parse --abbrev-ref HEAD');
 const builtAt = new Date().toISOString();
 
 const outDir = path.resolve(__dirname, '..', 'src', 'generated');
