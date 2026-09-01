@@ -300,8 +300,13 @@ export const oauthLogin = async (req: Request, res: Response) => {
         console.error('Google token verification error:', err);
         return res.status(401).json({ error: 'Invalid Google credential' });
       }
+    } else if (env.IS_PRODUCTION) {
+      // SECURITY: Production me sirf verified Google token accept hota hai.
+      // Bina credential ka fallback sirf local dev ke liye hai — production me
+      // koi bhi client fake email/name bhejkar kisi bhi account pe login kar sakta.
+      return res.status(401).json({ error: 'Google token verification is required' });
     } else {
-      // Fallback (e.g. local dev bina backend GOOGLE_CLIENT_ID ke) - decoded payload use hota hai
+      // Local/dev-only fallback (jab GOOGLE_CLIENT_ID set na ho ya credential na ho)
       verifiedEmail = email;
       verifiedName = name || (email || '').split('@')[0] || 'Google User';
       verifiedAvatar = avatar || null;
