@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { initializeDatabase, closeDatabase } from './config/database.js';
+import { BUILD_COMMIT, BUILD_BRANCH, BUILD_TIME } from './generated/build-info.js';
 import { 
   securityHeaders, 
   sanitizeInput, 
@@ -65,8 +66,9 @@ app.get('/api/health', (req, res) => {
     status: 'ok', 
     timestamp: new Date().toISOString(),
     message: '33veyora API is running',
-    commit: process.env.RAILWAY_GIT_COMMIT_SHA || process.env.VERCEL_GIT_COMMIT_SHA || 'local-dev',
-    branch: process.env.RAILWAY_GIT_BRANCH || process.env.VERCEL_GIT_COMMIT_REF || 'local'
+    commit: process.env.RAILWAY_GIT_COMMIT_SHA || BUILD_COMMIT || 'local-dev',
+    branch: process.env.RAILWAY_GIT_BRANCH || BUILD_BRANCH || 'local',
+    buildTime: BUILD_TIME
   });
 });
 
@@ -125,7 +127,8 @@ async function startServer() {
       console.log(`\n🏠 33veyora Backend`);
       console.log(`📡 Server running on http://localhost:${PORT}`);
       console.log(`🔒 Security: Rate limiting, XSS protection, SQL injection detection enabled`);
-      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}\n`);
+      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`📦 Build: commit=${BUILD_COMMIT} branch=${BUILD_BRANCH} builtAt=${BUILD_TIME}\n`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
